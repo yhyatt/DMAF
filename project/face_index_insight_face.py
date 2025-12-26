@@ -50,13 +50,20 @@ def load_known_faces(known_root: str, min_face_size: int = 80) -> Tuple[Dict[str
     app = _get_app()
     encodings: Dict[str, List[np.ndarray]] = {}
     people: List[str] = []
+    valid_extensions = {'.jpg', '.jpeg', '.png', '.heic', '.webp'}
+
     for person_dir in Path(known_root).iterdir():
         if not person_dir.is_dir():
             continue
         person = person_dir.name
         people.append(person)
         encodings[person] = []
+
         for img_path in person_dir.glob("*.*"):
+            # Skip Zone.Identifier and other non-image files
+            if 'Zone.Identifier' in img_path.name or img_path.suffix.lower() not in valid_extensions:
+                continue
+
             try:
                 img_np = _img_to_np(img_path)
             except Exception:

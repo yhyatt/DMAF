@@ -10,14 +10,25 @@ def load_known_faces(known_root: str) -> Tuple[Dict[str, List[np.ndarray]], List
     """
     encodings: Dict[str, List[np.ndarray]] = {}
     people = []
+    valid_extensions = {'.jpg', '.jpeg', '.png', '.heic', '.webp'}
+
     for person_dir in Path(known_root).iterdir():
         if not person_dir.is_dir():
             continue
         person = person_dir.name
         people.append(person)
         encodings[person] = []
+
         for img_path in person_dir.glob("*.*"):
-            img = face_recognition.load_image_file(str(img_path))
+            # Skip Zone.Identifier and other non-image files
+            if 'Zone.Identifier' in img_path.name or img_path.suffix.lower() not in valid_extensions:
+                continue
+
+            try:
+                img = face_recognition.load_image_file(str(img_path))
+            except Exception as e:
+                # Skip files that can't be loaded as images
+                continue
             locs = face_recognition.face_locations(img, model="hog")  # or "cnn" if you have GPU/CUDA build
             if not locs:
                 continue

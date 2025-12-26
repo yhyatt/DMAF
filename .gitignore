@@ -46,4 +46,4 @@ htmlcov/
 build/
 dist/
 *.egg-info/
-.eggs/
+.eggs/IMPLEMENTATION_STATUS.md
