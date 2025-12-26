@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(claude mcp list:*)",
+      "Bash(claude mcp add:*)",
+      "Bash(claude mcp remove:*)",
+      "mcp__filesystem__directory_tree",
+      "mcp__filesystem__list_directory_with_sizes",
+      "mcp__filesystem__list_directory",
+      "Bash(ls:*)",
+      "mcp__filesystem__read_multiple_files"
+    ]
+  },
+  "outputStyle": "Explanatory"
+}

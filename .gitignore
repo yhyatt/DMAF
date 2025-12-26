@@ -1,0 +1,49 @@
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment directories
+venv/
+env/
+.venv/
+ENV/
+
+# IDE-specific files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Windows Zone.Identifier files (WSL)
+*:Zone.Identifier
+
+# Sensitive information - NEVER COMMIT
+client_secret.json
+client_secrets.json
+credentials.json
+token.json
+
+# Database and state files
+*.sqlite3
+state.sqlite3
+
+# Known people images (personal photos)
+known_people/
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+.hypothesis/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
