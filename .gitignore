@@ -46,4 +46,7 @@ htmlcov/
 build/
 dist/
 *.egg-info/
-.eggs/IMPLEMENTATION_STATUS.md
+.eggs/
+
+# Status tracking (local only)
+IMPLEMENTATION_STATUS.md
