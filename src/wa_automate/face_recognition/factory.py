@@ -83,9 +83,9 @@ def _get_backend(backend_name: str):
         return _backend_cache[backend_name]
 
     if backend_name == "face_recognition":
-        import face_index_face_recog as backend
+        from wa_automate.face_recognition import dlib_backend as backend
     elif backend_name == "insightface":
-        import face_index_insight_face as backend
+        from wa_automate.face_recognition import insightface_backend as backend
     else:
         raise ValueError(
             f"Unknown backend: {backend_name}. "

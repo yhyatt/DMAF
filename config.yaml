@@ -15,12 +15,12 @@ recognition:
   allow_multiple_people: true   # upload if any of the whitelisted people appear
 
 # Known people images root
-known_people_dir: "./known_people"
+known_people_dir: "./data/known_people"
 
 # Dedup
 dedup:
   method: "sha256"    # store hashes in sqlite to avoid reprocessing
-  db_path: "./state.sqlite3"
+  db_path: "./data/state.sqlite3"
 
 # Logging
 log_level: "INFO"

@@ -6,7 +6,7 @@ from typing import Optional, Tuple, List
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
-from retry import with_retry, RetryConfig
+from wa_automate.utils.retry import with_retry, RetryConfig
 
 SCOPES = [
     "https://www.googleapis.com/auth/photoslibrary.appendonly",

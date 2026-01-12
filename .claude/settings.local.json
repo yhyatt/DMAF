@@ -8,7 +8,13 @@
       "mcp__filesystem__list_directory_with_sizes",
       "mcp__filesystem__list_directory",
       "Bash(ls:*)",
-      "mcp__filesystem__read_multiple_files"
+      "mcp__filesystem__read_multiple_files",
+      "Bash(.venv/bin/pip install:*)",
+      "Bash(.venv/bin/python:*)",
+      "Bash(.venv/bin/wa-automate:*)",
+      "Bash(timeout 3 .venv/bin/python:*)",
+      "Bash(sqlite3:*)",
+      "Bash(tree:*)"
     ]
   },
   "outputStyle": "Explanatory"

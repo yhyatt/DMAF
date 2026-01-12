@@ -28,12 +28,9 @@ client_secrets.json
 credentials.json
 token.json
 
-# Database and state files
-*.sqlite3
-state.sqlite3
-
-# Known people images (personal photos)
-known_people/
+# Data directory (personal photos and runtime state)
+data/
+!data/known_people/README.md
 
 # Test artifacts
 .pytest_cache/
