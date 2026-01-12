@@ -30,7 +30,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/bin/claude-input-notify"
+            "command": "$HOME/dotfiles/bin/claude-input-notify"
           }
         ]
       }
