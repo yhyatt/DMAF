@@ -14,6 +14,16 @@
       "Bash(.venv/bin/wa-automate:*)",
       "Bash(timeout 3 .venv/bin/python:*)",
       "Bash(sqlite3:*)",
+      "Bash(tree:*)",
+      "Bash(.venv/bin/pytest tests/test_config.py -v)",
+      "Bash(.venv/bin/pytest tests/test_database.py -v)",
+      "Bash(.venv/bin/pytest tests/test_retry.py -v)",
+      "Bash(.venv/bin/pytest tests/test_factory.py -v)",
+      "Bash(.venv/bin/pytest tests/ -v --cov=wa_automate --cov-report=term-missing:skip-covered)",
+      "Bash(.venv/bin/pytest tests/test_google_photos_api.py -v)",
+      "Bash(.venv/bin/pytest:*)"
+    ]
+  },
   "hooks": {
     "UserPromptSubmit": [
       {
