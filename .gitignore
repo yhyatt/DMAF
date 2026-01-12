@@ -47,3 +47,6 @@ dist/
 
 # Status tracking (local only)
 IMPLEMENTATION_STATUS.md
+
+# Firebase debug logs
+firebase-debug.log
