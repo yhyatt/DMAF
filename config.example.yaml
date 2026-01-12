@@ -1,0 +1,52 @@
+# wa_automate Configuration Template
+# Copy this file to config.yaml and customize for your setup
+#
+# IMPORTANT: Place client_secret.json in the root directory alongside this config file
+
+# WhatsApp incoming media directories - adapt to your setup
+watch_dirs:
+  - "/path/to/WhatsApp/Media/WhatsApp Images"
+  # Add more directories as needed
+  # - "/another/path/to/watch"
+
+# Optional: Google Photos album to upload to
+# If omitted or null, items go to library root
+google_photos_album_name: null  # "Family - Auto WhatsApp Imports"
+
+# Face Recognition Settings
+recognition:
+  # Backend: "face_recognition" (dlib, CPU) or "insightface" (deep learning, more accurate)
+  backend: "face_recognition"
+
+  # Matching threshold - lower = stricter matching
+  # face_recognition: typically 0.50-0.60
+  # insightface: typically 0.30-0.50
+  tolerance: 0.52
+
+  # Minimum face size in pixels (skip tiny faces)
+  min_face_size_pixels: 80
+
+  # Only upload if at least one known face is detected
+  require_any_match: true
+
+  # Upload if ANY whitelisted person appears (vs. requiring ALL)
+  allow_multiple_people: true
+
+# Known people reference images
+# Directory structure:
+#   data/known_people/
+#     person1/
+#       image1.jpg
+#       image2.jpg
+#     person2/
+#       image1.jpg
+# See data/known_people/README.md for detailed instructions
+known_people_dir: "./data/known_people"
+
+# Deduplication settings
+dedup:
+  method: "sha256"                 # Hash algorithm for file deduplication
+  db_path: "./data/state.sqlite3"  # SQLite database for tracking processed files
+
+# Logging level: DEBUG, INFO, WARNING, ERROR, CRITICAL
+log_level: "INFO"

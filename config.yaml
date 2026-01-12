@@ -1,0 +1,26 @@
+# configuration file
+# WhatsApp incoming media - adapt to your setup
+watch_dirs:
+  - "/path/to/WhatsApp/Media/WhatsApp Images"
+
+# Optional album to put uploads into. If omitted, items go to library root.
+google_photos_album_name: #  "Family - Auto WhatsApp Imports"
+
+# Recognition
+recognition:
+  backend: "face_recognition"   # or "insightface" 
+  tolerance: 0.52               # lower = stricter. start 0.52-0.58 for face_recognition
+  min_face_size_pixels: 80      # skip tiny faces
+  require_any_match: true       # at least one recognized face to upload
+  allow_multiple_people: true   # upload if any of the whitelisted people appear
+
+# Known people images root
+known_people_dir: "./data/known_people"
+
+# Dedup
+dedup:
+  method: "sha256"    # store hashes in sqlite to avoid reprocessing
+  db_path: "./data/state.sqlite3"
+
+# Logging
+log_level: "INFO"
