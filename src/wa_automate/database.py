@@ -2,7 +2,6 @@
 import sqlite3
 import threading
 from pathlib import Path
-from typing import Optional
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS files(
@@ -38,11 +37,11 @@ class Database:
 
     def _get_conn(self) -> sqlite3.Connection:
         """Get thread-local database connection."""
-        if not hasattr(self._local, 'conn') or self._local.conn is None:
+        if not hasattr(self._local, "conn") or self._local.conn is None:
             self._local.conn = sqlite3.connect(
                 self.db_path,
                 check_same_thread=False,
-                timeout=30.0  # Wait up to 30s if database is locked
+                timeout=30.0,  # Wait up to 30s if database is locked
             )
         return self._local.conn
 
@@ -52,13 +51,13 @@ class Database:
         cur = conn.execute("SELECT 1 FROM files WHERE path=?", (path,))
         return cur.fetchone() is not None
 
-    def add_file(self, path: str, sha256: Optional[str], matched: int, uploaded: int):
+    def add_file(self, path: str, sha256: str | None, matched: int, uploaded: int):
         """Add a new file record to the database."""
         with self._write_lock:
             conn = self._get_conn()
             conn.execute(
                 "INSERT OR IGNORE INTO files(path, sha256, matched, uploaded) VALUES(?,?,?,?)",
-                (path, sha256, matched, uploaded)
+                (path, sha256, matched, uploaded),
             )
             conn.commit()
 
@@ -71,7 +70,7 @@ class Database:
 
     def close(self):
         """Close all thread-local connections. Call on shutdown."""
-        if hasattr(self._local, 'conn') and self._local.conn is not None:
+        if hasattr(self._local, "conn") and self._local.conn is not None:
             self._local.conn.close()
             self._local.conn = None
 

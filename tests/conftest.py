@@ -2,8 +2,8 @@
 
 import sqlite3
 import tempfile
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator
 from unittest.mock import MagicMock
 
 import pytest
@@ -108,13 +108,15 @@ def mock_db_connection(mock_db_path: Path) -> Generator[sqlite3.Connection, None
     conn = sqlite3.connect(str(mock_db_path))
 
     # Create the processed_files table
-    conn.execute("""
+    conn.execute(
+        """
         CREATE TABLE IF NOT EXISTS processed_files (
             file_hash TEXT PRIMARY KEY,
             file_path TEXT,
             processed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
-    """)
+    """
+    )
     conn.commit()
 
     yield conn
@@ -126,6 +128,7 @@ def mock_db_connection(mock_db_path: Path) -> Generator[sqlite3.Connection, None
 def sample_face_encoding():
     """Sample face encoding (128-dimensional vector for face_recognition backend)."""
     import numpy as np
+
     return np.random.rand(128).tolist()
 
 
@@ -146,9 +149,7 @@ def mock_google_photos_service():
 
     # Mock albums().list() response
     mock_service.albums().list().execute.return_value = {
-        "albums": [
-            {"id": "mock_album_id", "title": "Test Album"}
-        ]
+        "albums": [{"id": "mock_album_id", "title": "Test Album"}]
     }
 
     return mock_service
@@ -164,6 +165,7 @@ def mock_face_recognition_model():
 
     # Mock face_encodings
     import numpy as np
+
     mock_model.face_encodings.return_value = [np.random.rand(128)]
 
     # Mock compare_faces
@@ -181,6 +183,7 @@ def mock_insightface_model():
     mock_face = MagicMock()
     mock_face.bbox = [100, 50, 200, 150]  # [x1, y1, x2, y2]
     import numpy as np
+
     mock_face.embedding = np.random.rand(512)  # InsightFace uses 512-dim embeddings
 
     mock_model.get.return_value = [mock_face]

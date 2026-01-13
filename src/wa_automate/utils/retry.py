@@ -1,21 +1,25 @@
 # retry.py - Retry decorator with exponential backoff
-import time
 import logging
+import time
+from collections.abc import Callable
 from functools import wraps
-from typing import Callable, TypeVar, Tuple
+from typing import TypeVar
+
 import requests
 
-T = TypeVar('T')
+T = TypeVar("T")
+
 
 class RetryConfig:
     """Configuration for retry behavior"""
+
     def __init__(
         self,
         max_retries: int = 3,
         base_delay: float = 1.0,
         max_delay: float = 60.0,
         exponential_base: float = 2.0,
-        retryable_status_codes: Tuple[int, ...] = (429, 500, 502, 503, 504)
+        retryable_status_codes: tuple[int, ...] = (429, 500, 502, 503, 504),
     ):
         self.max_retries = max_retries
         self.base_delay = base_delay
@@ -53,14 +57,16 @@ def with_retry(config: RetryConfig = None):
 
                 except requests.HTTPError as e:
                     # Check if status code is retryable
-                    if (e.response is not None and
-                        e.response.status_code in config.retryable_status_codes):
+                    if (
+                        e.response is not None
+                        and e.response.status_code in config.retryable_status_codes
+                    ):
                         last_exception = e
 
                         if attempt < config.max_retries:
                             delay = min(
-                                config.base_delay * (config.exponential_base ** attempt),
-                                config.max_delay
+                                config.base_delay * (config.exponential_base**attempt),
+                                config.max_delay,
                             )
                             logging.warning(
                                 f"{func.__name__}: Retry {attempt + 1}/{config.max_retries} "
@@ -77,8 +83,7 @@ def with_retry(config: RetryConfig = None):
 
                     if attempt < config.max_retries:
                         delay = min(
-                            config.base_delay * (config.exponential_base ** attempt),
-                            config.max_delay
+                            config.base_delay * (config.exponential_base**attempt), config.max_delay
                         )
                         logging.warning(
                             f"{func.__name__}: Retry {attempt + 1}/{config.max_retries} "
@@ -95,4 +100,5 @@ def with_retry(config: RetryConfig = None):
             raise RuntimeError("Retry logic error")
 
         return wrapper
+
     return decorator

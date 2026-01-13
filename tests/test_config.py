@@ -1,6 +1,5 @@
 """Tests for configuration management."""
 
-import os
 from pathlib import Path
 
 import pytest
@@ -84,6 +83,7 @@ class TestSettings:
         """Test default settings with minimal required data."""
         # Create a temporary known_people directory to satisfy validation
         import tempfile
+
         with tempfile.TemporaryDirectory() as tmpdir:
             known_dir = Path(tmpdir) / "known_people"
             known_dir.mkdir()
@@ -99,6 +99,7 @@ class TestSettings:
     def test_watch_dirs_conversion(self):
         """Test watch_dirs string paths are converted to Path objects."""
         import tempfile
+
         with tempfile.TemporaryDirectory() as tmpdir:
             known_dir = Path(tmpdir) / "known_people"
             known_dir.mkdir()
@@ -118,6 +119,7 @@ class TestSettings:
     def test_valid_log_levels(self):
         """Test valid log level choices."""
         import tempfile
+
         with tempfile.TemporaryDirectory() as tmpdir:
             known_dir = Path(tmpdir) / "known_people"
             known_dir.mkdir()
@@ -129,6 +131,7 @@ class TestSettings:
     def test_invalid_log_level(self):
         """Test that invalid log level raises validation error."""
         import tempfile
+
         with tempfile.TemporaryDirectory() as tmpdir:
             known_dir = Path(tmpdir) / "known_people"
             known_dir.mkdir()
@@ -139,6 +142,7 @@ class TestSettings:
     def test_nested_settings(self):
         """Test nested recognition and dedup settings."""
         import tempfile
+
         with tempfile.TemporaryDirectory() as tmpdir:
             known_dir = Path(tmpdir) / "known_people"
             known_dir.mkdir()

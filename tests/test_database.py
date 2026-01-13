@@ -1,10 +1,7 @@
 """Tests for thread-safe database operations."""
 
-import sqlite3
 import threading
 from pathlib import Path
-
-import pytest
 
 from wa_automate.database import Database, get_conn
 
@@ -18,9 +15,7 @@ class TestDatabase:
 
         # Verify table was created
         conn = db._get_conn()
-        cursor = conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='files'"
-        )
+        cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='files'")
         assert cursor.fetchone() is not None
 
         db.close()
@@ -58,8 +53,7 @@ class TestDatabase:
         # Verify record exists
         conn = db._get_conn()
         cursor = conn.execute(
-            "SELECT path, sha256, matched, uploaded FROM files WHERE path=?",
-            (file_path,)
+            "SELECT path, sha256, matched, uploaded FROM files WHERE path=?", (file_path,)
         )
         row = cursor.fetchone()
 
@@ -160,19 +154,13 @@ class TestDatabase:
 
                 # Add a file (tests write lock)
                 db.add_file(
-                    f"/thread_{thread_id}/file.jpg",
-                    f"hash_{thread_id}",
-                    matched=1,
-                    uploaded=0
+                    f"/thread_{thread_id}/file.jpg", f"hash_{thread_id}", matched=1, uploaded=0
                 )
             except Exception as e:
                 errors.append((thread_id, str(e)))
 
         # Create threads
-        threads = [
-            threading.Thread(target=use_connection, args=(i,))
-            for i in range(5)
-        ]
+        threads = [threading.Thread(target=use_connection, args=(i,)) for i in range(5)]
 
         # Run threads
         for t in threads:
@@ -201,18 +189,10 @@ class TestDatabase:
         def add_files(start_idx, count):
             """Add multiple files in this thread."""
             for i in range(start_idx, start_idx + count):
-                db.add_file(
-                    f"/test/file_{i}.jpg",
-                    f"hash_{i}",
-                    matched=1,
-                    uploaded=0
-                )
+                db.add_file(f"/test/file_{i}.jpg", f"hash_{i}", matched=1, uploaded=0)
 
         # Create threads that add files concurrently
-        threads = [
-            threading.Thread(target=add_files, args=(i * 10, 10))
-            for i in range(5)
-        ]
+        threads = [threading.Thread(target=add_files, args=(i * 10, 10)) for i in range(5)]
 
         # Run threads
         for t in threads:

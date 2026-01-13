@@ -1,7 +1,6 @@
 """Tests for retry logic with exponential backoff."""
 
-import logging
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 import requests
@@ -29,7 +28,7 @@ class TestRetryConfig:
             base_delay=2.0,
             max_delay=120.0,
             exponential_base=3.0,
-            retryable_status_codes=(503, 504)
+            retryable_status_codes=(503, 504),
         )
 
         assert config.max_retries == 5
@@ -44,6 +43,7 @@ class TestWithRetrySuccess:
 
     def test_success_on_first_attempt(self):
         """Test that successful calls don't retry."""
+
         @with_retry()
         def successful_function():
             return "success"
@@ -66,7 +66,7 @@ class TestWithRetrySuccess:
 class TestWithRetryHTTPError:
     """Test retry behavior on HTTPError."""
 
-    @patch('wa_automate.utils.retry.time.sleep')
+    @patch("wa_automate.utils.retry.time.sleep")
     def test_retry_on_500_error(self, mock_sleep):
         """Test that 500 errors trigger retry."""
         # Mock response with 500 status
@@ -94,7 +94,7 @@ class TestWithRetryHTTPError:
         mock_sleep.assert_any_call(1.0)  # First retry: base_delay * 2^0
         mock_sleep.assert_any_call(2.0)  # Second retry: base_delay * 2^1
 
-    @patch('wa_automate.utils.retry.time.sleep')
+    @patch("wa_automate.utils.retry.time.sleep")
     def test_retry_on_429_rate_limit(self, mock_sleep):
         """Test that 429 (rate limit) errors trigger retry."""
         mock_response = Mock()
@@ -151,7 +151,7 @@ class TestWithRetryHTTPError:
         with pytest.raises(requests.HTTPError):
             bad_request()
 
-    @patch('wa_automate.utils.retry.time.sleep')
+    @patch("wa_automate.utils.retry.time.sleep")
     def test_max_retries_exceeded(self, mock_sleep):
         """Test that max retries are respected."""
         mock_response = Mock()
@@ -178,7 +178,7 @@ class TestWithRetryHTTPError:
 class TestWithRetryRequestException:
     """Test retry behavior on RequestException (network errors)."""
 
-    @patch('wa_automate.utils.retry.time.sleep')
+    @patch("wa_automate.utils.retry.time.sleep")
     def test_retry_on_connection_error(self, mock_sleep):
         """Test retry on ConnectionError."""
         call_count = 0
@@ -196,7 +196,7 @@ class TestWithRetryRequestException:
         assert call_count == 2
         assert mock_sleep.call_count == 1
 
-    @patch('wa_automate.utils.retry.time.sleep')
+    @patch("wa_automate.utils.retry.time.sleep")
     def test_retry_on_timeout(self, mock_sleep):
         """Test retry on Timeout."""
         call_count = 0
@@ -213,9 +213,10 @@ class TestWithRetryRequestException:
         assert result == "success"
         assert call_count == 2
 
-    @patch('wa_automate.utils.retry.time.sleep')
+    @patch("wa_automate.utils.retry.time.sleep")
     def test_max_retries_on_network_error(self, mock_sleep):
         """Test that max retries are respected for network errors."""
+
         @with_retry(RetryConfig(max_retries=2))
         def always_fails_network():
             raise requests.ConnectionError("Always fails")
@@ -230,7 +231,7 @@ class TestWithRetryRequestException:
 class TestExponentialBackoff:
     """Test exponential backoff delay calculation."""
 
-    @patch('wa_automate.utils.retry.time.sleep')
+    @patch("wa_automate.utils.retry.time.sleep")
     def test_exponential_delays(self, mock_sleep):
         """Test that delays follow exponential backoff."""
         mock_response = Mock()
@@ -255,18 +256,20 @@ class TestExponentialBackoff:
         mock_sleep.assert_any_call(4.0)  # 2.0 * 2^1
         mock_sleep.assert_any_call(8.0)  # 2.0 * 2^2
 
-    @patch('wa_automate.utils.retry.time.sleep')
+    @patch("wa_automate.utils.retry.time.sleep")
     def test_max_delay_cap(self, mock_sleep):
         """Test that delays are capped at max_delay."""
         mock_response = Mock()
         mock_response.status_code = 500
 
-        @with_retry(RetryConfig(
-            max_retries=3,
-            base_delay=10.0,
-            max_delay=15.0,  # Cap at 15 seconds
-            exponential_base=2.0
-        ))
+        @with_retry(
+            RetryConfig(
+                max_retries=3,
+                base_delay=10.0,
+                max_delay=15.0,  # Cap at 15 seconds
+                exponential_base=2.0,
+            )
+        )
         def always_fails():
             error = requests.HTTPError()
             error.response = mock_response
@@ -285,8 +288,8 @@ class TestExponentialBackoff:
 class TestRetryLogging:
     """Test logging of retry attempts."""
 
-    @patch('wa_automate.utils.retry.time.sleep')
-    @patch('wa_automate.utils.retry.logging.warning')
+    @patch("wa_automate.utils.retry.time.sleep")
+    @patch("wa_automate.utils.retry.logging.warning")
     def test_logging_on_retry(self, mock_warning, mock_sleep):
         """Test that retry attempts are logged."""
         mock_response = Mock()
@@ -313,8 +316,8 @@ class TestRetryLogging:
         assert "Retry 1/1" in warning_msg
         assert "HTTP 503" in warning_msg
 
-    @patch('wa_automate.utils.retry.time.sleep')
-    @patch('wa_automate.utils.retry.logging.warning')
+    @patch("wa_automate.utils.retry.time.sleep")
+    @patch("wa_automate.utils.retry.logging.warning")
     def test_logging_network_error(self, mock_warning, mock_sleep):
         """Test logging for network errors."""
         call_count = 0
@@ -361,6 +364,7 @@ class TestRetryEdgeCases:
 
     def test_with_function_arguments(self):
         """Test that decorated functions can accept arguments."""
+
         @with_retry()
         def add_numbers(a, b, multiplier=1):
             return (a + b) * multiplier
@@ -368,9 +372,10 @@ class TestRetryEdgeCases:
         result = add_numbers(10, 20, multiplier=2)
         assert result == 60
 
-    @patch('wa_automate.utils.retry.time.sleep')
+    @patch("wa_automate.utils.retry.time.sleep")
     def test_preserves_function_metadata(self, mock_sleep):
         """Test that decorator preserves function metadata."""
+
         @with_retry()
         def my_function():
             """This is my function."""

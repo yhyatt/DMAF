@@ -1,7 +1,6 @@
 """Tests for Google Photos API integration."""
 
-from pathlib import Path
-from unittest.mock import MagicMock, Mock, mock_open, patch
+from unittest.mock import Mock, mock_open, patch
 
 import pytest
 
@@ -17,8 +16,8 @@ from wa_automate.google_photos.api import (
 class TestGetCreds:
     """Test OAuth credential management."""
 
-    @patch('pathlib.Path.exists')
-    @patch('wa_automate.google_photos.api.Credentials')
+    @patch("pathlib.Path.exists")
+    @patch("wa_automate.google_photos.api.Credentials")
     def test_load_existing_valid_creds(self, mock_creds_class, mock_exists):
         """Test loading existing valid credentials."""
         mock_exists.return_value = True
@@ -33,9 +32,9 @@ class TestGetCreds:
         assert creds == mock_creds
         mock_creds_class.from_authorized_user_file.assert_called_once_with("token.json", SCOPES)
 
-    @patch('pathlib.Path.exists')
-    @patch('wa_automate.google_photos.api.Credentials')
-    @patch('builtins.open', new_callable=mock_open)
+    @patch("pathlib.Path.exists")
+    @patch("wa_automate.google_photos.api.Credentials")
+    @patch("builtins.open", new_callable=mock_open)
     def test_refresh_expired_creds(self, mock_file, mock_creds_class, mock_exists):
         """Test refreshing expired credentials."""
         mock_exists.return_value = True
@@ -59,10 +58,10 @@ class TestGetCreds:
 
         assert creds == mock_creds
 
-    @patch('pathlib.Path.exists')
-    @patch('wa_automate.google_photos.api.Credentials')
-    @patch('wa_automate.google_photos.api.InstalledAppFlow')
-    @patch('builtins.open', new_callable=mock_open)
+    @patch("pathlib.Path.exists")
+    @patch("wa_automate.google_photos.api.Credentials")
+    @patch("wa_automate.google_photos.api.InstalledAppFlow")
+    @patch("builtins.open", new_callable=mock_open)
     def test_new_auth_flow(self, mock_file, mock_flow_class, mock_creds_class, mock_exists):
         """Test running new OAuth flow when no valid credentials exist."""
         mock_exists.return_value = False
@@ -78,7 +77,9 @@ class TestGetCreds:
         creds = get_creds("token.json", "client_secret.json")
 
         # Should have created flow and run local server
-        mock_flow_class.from_client_secrets_file.assert_called_once_with("client_secret.json", SCOPES)
+        mock_flow_class.from_client_secrets_file.assert_called_once_with(
+            "client_secret.json", SCOPES
+        )
         mock_flow.run_local_server.assert_called_once_with(port=0)
 
         # Should have saved new token
@@ -87,11 +88,13 @@ class TestGetCreds:
 
         assert creds == mock_creds
 
-    @patch('pathlib.Path.exists')
-    @patch('wa_automate.google_photos.api.Credentials')
-    @patch('wa_automate.google_photos.api.InstalledAppFlow')
-    @patch('builtins.open', new_callable=mock_open)
-    def test_invalid_creds_no_refresh_token(self, mock_file, mock_flow_class, mock_creds_class, mock_exists):
+    @patch("pathlib.Path.exists")
+    @patch("wa_automate.google_photos.api.Credentials")
+    @patch("wa_automate.google_photos.api.InstalledAppFlow")
+    @patch("builtins.open", new_callable=mock_open)
+    def test_invalid_creds_no_refresh_token(
+        self, mock_file, mock_flow_class, mock_creds_class, mock_exists
+    ):
         """Test OAuth flow when credentials are invalid and have no refresh token."""
         mock_exists.return_value = True
 
@@ -128,7 +131,7 @@ class TestEnsureAlbum:
         result = ensure_album(mock_creds, None)
         assert result is None
 
-    @patch('wa_automate.google_photos.api.requests.get')
+    @patch("wa_automate.google_photos.api.requests.get")
     def test_find_existing_album(self, mock_get):
         """Test finding an existing album by name."""
         mock_creds = Mock()
@@ -151,8 +154,8 @@ class TestEnsureAlbum:
         assert album_id == "album_2"
         mock_get.assert_called_once()
 
-    @patch('wa_automate.google_photos.api.requests.get')
-    @patch('wa_automate.google_photos.api.requests.post')
+    @patch("wa_automate.google_photos.api.requests.get")
+    @patch("wa_automate.google_photos.api.requests.post")
     def test_create_new_album(self, mock_post, mock_get):
         """Test creating a new album when it doesn't exist."""
         mock_creds = Mock()
@@ -178,8 +181,8 @@ class TestEnsureAlbum:
         call_kwargs = mock_post.call_args[1]
         assert call_kwargs["json"] == {"album": {"title": "New Album"}}
 
-    @patch('wa_automate.google_photos.api.requests.get')
-    @patch('wa_automate.google_photos.api.requests.post')
+    @patch("wa_automate.google_photos.api.requests.get")
+    @patch("wa_automate.google_photos.api.requests.post")
     def test_api_error_no_albums_returned(self, mock_post, mock_get):
         """Test handling API response without albums key."""
         mock_creds = Mock()
@@ -204,7 +207,7 @@ class TestEnsureAlbum:
 class TestUploadBytes:
     """Test image upload to Google Photos."""
 
-    @patch('wa_automate.google_photos.api.requests.post')
+    @patch("wa_automate.google_photos.api.requests.post")
     def test_successful_upload(self, mock_post):
         """Test successful image upload."""
         mock_creds = Mock()
@@ -229,7 +232,7 @@ class TestUploadBytes:
         assert "Authorization" in call_kwargs["headers"]
         assert call_kwargs["headers"]["X-Goog-Upload-File-Name"] == "test.jpg"
 
-    @patch('wa_automate.google_photos.api.requests.post')
+    @patch("wa_automate.google_photos.api.requests.post")
     def test_upload_with_retry_decorator(self, mock_post):
         """Test that upload has retry logic on network errors."""
         import requests
@@ -241,13 +244,10 @@ class TestUploadBytes:
         mock_response_success = Mock()
         mock_response_success.text = "token_after_retry"
 
-        mock_post.side_effect = [
-            requests.ConnectionError("Network error"),
-            mock_response_success
-        ]
+        mock_post.side_effect = [requests.ConnectionError("Network error"), mock_response_success]
 
         # Due to @with_retry decorator, this should succeed after retry
-        with patch('wa_automate.utils.retry.time.sleep'):  # Mock sleep to speed up test
+        with patch("wa_automate.utils.retry.time.sleep"):  # Mock sleep to speed up test
             token = upload_bytes(mock_creds, b"data", "test.jpg")
 
             assert token == "token_after_retry"
@@ -257,7 +257,7 @@ class TestUploadBytes:
 class TestCreateMediaItem:
     """Test media item creation in Google Photos."""
 
-    @patch('wa_automate.google_photos.api.requests.post')
+    @patch("wa_automate.google_photos.api.requests.post")
     def test_create_without_album(self, mock_post):
         """Test creating media item without album."""
         mock_creds = Mock()
@@ -266,12 +266,7 @@ class TestCreateMediaItem:
         # Mock successful creation response
         mock_response = Mock()
         mock_response.json.return_value = {
-            "newMediaItemResults": [
-                {
-                    "status": {"code": 0},
-                    "mediaItem": {"id": "media_item_123"}
-                }
-            ]
+            "newMediaItemResults": [{"status": {"code": 0}, "mediaItem": {"id": "media_item_123"}}]
         }
         mock_post.return_value = mock_response
 
@@ -282,13 +277,14 @@ class TestCreateMediaItem:
         # Verify POST body
         call_kwargs = mock_post.call_args[1]
         import json
+
         body = json.loads(call_kwargs["data"])
 
         assert "newMediaItems" in body
         assert body["newMediaItems"][0]["simpleMediaItem"]["uploadToken"] == "upload_token"
         assert "albumId" not in body
 
-    @patch('wa_automate.google_photos.api.requests.post')
+    @patch("wa_automate.google_photos.api.requests.post")
     def test_create_with_album(self, mock_post):
         """Test creating media item with album."""
         mock_creds = Mock()
@@ -296,12 +292,7 @@ class TestCreateMediaItem:
 
         mock_response = Mock()
         mock_response.json.return_value = {
-            "newMediaItemResults": [
-                {
-                    "status": {"code": 0},
-                    "mediaItem": {"id": "media_item_456"}
-                }
-            ]
+            "newMediaItemResults": [{"status": {"code": 0}, "mediaItem": {"id": "media_item_456"}}]
         }
         mock_post.return_value = mock_response
 
@@ -312,10 +303,11 @@ class TestCreateMediaItem:
         # Verify albumId was included
         call_kwargs = mock_post.call_args[1]
         import json
+
         body = json.loads(call_kwargs["data"])
         assert body["albumId"] == "album_id_789"
 
-    @patch('wa_automate.google_photos.api.requests.post')
+    @patch("wa_automate.google_photos.api.requests.post")
     def test_create_with_description(self, mock_post):
         """Test creating media item with description."""
         mock_creds = Mock()
@@ -323,20 +315,12 @@ class TestCreateMediaItem:
 
         mock_response = Mock()
         mock_response.json.return_value = {
-            "newMediaItemResults": [
-                {
-                    "status": {"code": 0},
-                    "mediaItem": {"id": "media_item_789"}
-                }
-            ]
+            "newMediaItemResults": [{"status": {"code": 0}, "mediaItem": {"id": "media_item_789"}}]
         }
         mock_post.return_value = mock_response
 
         item_id = create_media_item(
-            mock_creds,
-            "upload_token",
-            None,
-            description="Test photo description"
+            mock_creds, "upload_token", None, description="Test photo description"
         )
 
         assert item_id == "media_item_789"
@@ -344,10 +328,11 @@ class TestCreateMediaItem:
         # Verify description was included
         call_kwargs = mock_post.call_args[1]
         import json
+
         body = json.loads(call_kwargs["data"])
         assert body["newMediaItems"][0]["description"] == "Test photo description"
 
-    @patch('wa_automate.google_photos.api.requests.post')
+    @patch("wa_automate.google_photos.api.requests.post")
     def test_create_with_error_status(self, mock_post):
         """Test handling Google Photos API error status."""
         mock_creds = Mock()
@@ -356,21 +341,14 @@ class TestCreateMediaItem:
         # Mock error response from Google Photos
         mock_response = Mock()
         mock_response.json.return_value = {
-            "newMediaItemResults": [
-                {
-                    "status": {
-                        "code": 3,
-                        "message": "Invalid upload token"
-                    }
-                }
-            ]
+            "newMediaItemResults": [{"status": {"code": 3, "message": "Invalid upload token"}}]
         }
         mock_post.return_value = mock_response
 
         with pytest.raises(RuntimeError, match="Google Photos error"):
             create_media_item(mock_creds, "invalid_token", None)
 
-    @patch('wa_automate.google_photos.api.requests.post')
+    @patch("wa_automate.google_photos.api.requests.post")
     def test_create_with_retry_decorator(self, mock_post):
         """Test that create_media_item has retry logic."""
         mock_creds = Mock()
@@ -381,21 +359,20 @@ class TestCreateMediaItem:
 
         mock_error_response = Mock()
         mock_error_response.status_code = 503
-        mock_error_response.raise_for_status.side_effect = requests.HTTPError(response=mock_error_response)
+        mock_error_response.raise_for_status.side_effect = requests.HTTPError(
+            response=mock_error_response
+        )
 
         mock_success_response = Mock()
         mock_success_response.json.return_value = {
             "newMediaItemResults": [
-                {
-                    "status": {"code": 0},
-                    "mediaItem": {"id": "item_after_retry"}
-                }
+                {"status": {"code": 0}, "mediaItem": {"id": "item_after_retry"}}
             ]
         }
 
         mock_post.side_effect = [mock_error_response, mock_success_response]
 
-        with patch('wa_automate.utils.retry.time.sleep'):
+        with patch("wa_automate.utils.retry.time.sleep"):
             item_id = create_media_item(mock_creds, "token", None)
 
             assert item_id == "item_after_retry"
@@ -405,10 +382,10 @@ class TestCreateMediaItem:
 class TestGooglePhotosIntegration:
     """Test integration between Google Photos functions."""
 
-    @patch('wa_automate.google_photos.api.requests.post')
-    @patch('wa_automate.google_photos.api.requests.get')
-    @patch('pathlib.Path.exists')
-    @patch('wa_automate.google_photos.api.Credentials')
+    @patch("wa_automate.google_photos.api.requests.post")
+    @patch("wa_automate.google_photos.api.requests.get")
+    @patch("pathlib.Path.exists")
+    @patch("wa_automate.google_photos.api.Credentials")
     def test_full_upload_workflow(self, mock_creds_class, mock_exists, mock_get, mock_post):
         """Test complete workflow: auth -> upload -> create item."""
         # Setup: Mock valid credentials
@@ -433,10 +410,7 @@ class TestGooglePhotosIntegration:
         # Step 3: Mock create_media_item
         mock_create_response = Mock()
         mock_create_response.json.return_value = {
-            "newMediaItemResults": [{
-                "status": {"code": 0},
-                "mediaItem": {"id": "final_item_id"}
-            }]
+            "newMediaItemResults": [{"status": {"code": 0}, "mediaItem": {"id": "final_item_id"}}]
         }
         mock_post.return_value = mock_create_response
 

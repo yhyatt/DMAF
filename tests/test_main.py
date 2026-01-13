@@ -1,7 +1,7 @@
 """Tests for __main__ entry point."""
 
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -11,7 +11,7 @@ from wa_automate import __main__
 class TestBuildProcessor:
     """Test build_processor function."""
 
-    @patch('wa_automate.__main__.load_known_faces')
+    @patch("wa_automate.__main__.load_known_faces")
     def test_build_processor(self, mock_load):
         """Test building a face recognition processor."""
         # Mock load_known_faces
@@ -21,24 +21,19 @@ class TestBuildProcessor:
 
         # Build processor
         processor = __main__.build_processor(
-            Path("/path/to/known_people"),
-            "face_recognition",
-            0.5,
-            80
+            Path("/path/to/known_people"), "face_recognition", 0.5, 80
         )
 
         # Verify load_known_faces was called
         mock_load.assert_called_once_with(
-            "/path/to/known_people",
-            backend_name="face_recognition",
-            min_face_size=80
+            "/path/to/known_people", backend_name="face_recognition", min_face_size=80
         )
 
         # Verify processor is callable
         assert callable(processor)
 
-    @patch('wa_automate.__main__.load_known_faces')
-    @patch('wa_automate.__main__.best_match')
+    @patch("wa_automate.__main__.load_known_faces")
+    @patch("wa_automate.__main__.best_match")
     def test_processor_calls_best_match(self, mock_best_match, mock_load):
         """Test that processor function calls best_match."""
         import numpy as np
@@ -48,12 +43,7 @@ class TestBuildProcessor:
 
         mock_best_match.return_value = (True, ["bob"])
 
-        processor = __main__.build_processor(
-            Path("/path/to/known_people"),
-            "insightface",
-            0.4,
-            100
-        )
+        processor = __main__.build_processor(Path("/path/to/known_people"), "insightface", 0.4, 100)
 
         # Call processor
         test_image = np.zeros((100, 100, 3), dtype=np.uint8)
@@ -106,11 +96,11 @@ class TestMain:
         captured = capsys.readouterr()
         assert "Invalid configuration" in captured.err
 
-    @patch('wa_automate.__main__.run_watch')
-    @patch('wa_automate.__main__.get_creds')
-    @patch('wa_automate.__main__.ensure_album')
-    @patch('wa_automate.__main__.get_conn')
-    @patch('wa_automate.__main__.load_known_faces')
+    @patch("wa_automate.__main__.run_watch")
+    @patch("wa_automate.__main__.get_creds")
+    @patch("wa_automate.__main__.ensure_album")
+    @patch("wa_automate.__main__.get_conn")
+    @patch("wa_automate.__main__.load_known_faces")
     def test_main_success(
         self,
         mock_load,
@@ -118,7 +108,7 @@ class TestMain:
         mock_ensure_album,
         mock_get_creds,
         mock_run_watch,
-        sample_config_yaml: Path
+        sample_config_yaml: Path,
     ):
         """Test successful main execution."""
         # Setup mocks
@@ -141,11 +131,11 @@ class TestMain:
 
         assert result == 0
 
-    @patch('wa_automate.__main__.run_watch')
-    @patch('wa_automate.__main__.get_creds')
-    @patch('wa_automate.__main__.ensure_album')
-    @patch('wa_automate.__main__.get_conn')
-    @patch('wa_automate.__main__.load_known_faces')
+    @patch("wa_automate.__main__.run_watch")
+    @patch("wa_automate.__main__.get_creds")
+    @patch("wa_automate.__main__.ensure_album")
+    @patch("wa_automate.__main__.get_conn")
+    @patch("wa_automate.__main__.load_known_faces")
     def test_main_no_album_name(
         self,
         mock_load,
@@ -153,7 +143,7 @@ class TestMain:
         mock_ensure_album,
         mock_get_creds,
         mock_run_watch,
-        temp_dir: Path
+        temp_dir: Path,
     ):
         """Test main with no album name (album_id should be None)."""
         # Create config without album name
@@ -190,11 +180,11 @@ class TestMain:
         # ensure_album should NOT have been called
         mock_ensure_album.assert_not_called()
 
-    @patch('wa_automate.__main__.run_watch')
-    @patch('wa_automate.__main__.get_creds')
-    @patch('wa_automate.__main__.ensure_album')
-    @patch('wa_automate.__main__.get_conn')
-    @patch('wa_automate.__main__.load_known_faces')
+    @patch("wa_automate.__main__.run_watch")
+    @patch("wa_automate.__main__.get_creds")
+    @patch("wa_automate.__main__.ensure_album")
+    @patch("wa_automate.__main__.get_conn")
+    @patch("wa_automate.__main__.load_known_faces")
     def test_main_album_creation_fails(
         self,
         mock_load,
@@ -203,7 +193,7 @@ class TestMain:
         mock_get_creds,
         mock_run_watch,
         sample_config_yaml: Path,
-        caplog
+        caplog,
     ):
         """Test that album creation failure logs warning but continues."""
         # Setup mocks
@@ -223,16 +213,17 @@ class TestMain:
         # Should still call run_watch (continues despite album failure)
         mock_run_watch.assert_called_once()
 
+
 class TestUploader:
     """Test Uploader class (defined in main())."""
 
-    @patch('wa_automate.__main__.run_watch')
-    @patch('wa_automate.__main__.get_creds')
-    @patch('wa_automate.__main__.get_conn')
-    @patch('wa_automate.__main__.load_known_faces')
-    @patch('wa_automate.__main__.Image.open')
-    @patch('wa_automate.__main__.upload_bytes')
-    @patch('wa_automate.__main__.create_media_item')
+    @patch("wa_automate.__main__.run_watch")
+    @patch("wa_automate.__main__.get_creds")
+    @patch("wa_automate.__main__.get_conn")
+    @patch("wa_automate.__main__.load_known_faces")
+    @patch("wa_automate.__main__.Image.open")
+    @patch("wa_automate.__main__.upload_bytes")
+    @patch("wa_automate.__main__.create_media_item")
     def test_uploader_on_match(
         self,
         mock_create,
@@ -243,7 +234,7 @@ class TestUploader:
         mock_get_creds,
         mock_run_watch,
         sample_config_yaml: Path,
-        temp_dir: Path
+        temp_dir: Path,
     ):
         """Test that Uploader.on_match uploads images."""
         # Setup mocks
@@ -317,5 +308,3 @@ class TestMainCLI:
         assert result == 1
         captured = capsys.readouterr()
         assert "Configuration file not found" in captured.err
-
-

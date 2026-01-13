@@ -1,19 +1,22 @@
 # watcher logic
 import hashlib
 import logging
-from pathlib import Path
-from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
-from PIL import Image
-import numpy as np
 import time
+from pathlib import Path
+
+import numpy as np
+from PIL import Image
+from watchdog.events import FileSystemEventHandler
+from watchdog.observers import Observer
+
 
 def sha256_of_file(p: Path) -> str:
     h = hashlib.sha256()
     with p.open("rb") as f:
-        for chunk in iter(lambda: f.read(1024*1024), b""):
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
             h.update(chunk)
     return h.hexdigest()
+
 
 class NewImageHandler(FileSystemEventHandler):
     def __init__(self, process_fn, db_conn, cfg):
@@ -55,6 +58,7 @@ class NewImageHandler(FileSystemEventHandler):
 
     def on_match(self, p: Path, who):
         pass  # overridden by caller
+
 
 def run_watch(dirs, handler):
     obs = Observer()

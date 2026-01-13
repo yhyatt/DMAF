@@ -1,10 +1,9 @@
 """Basic tests for dlib face recognition backend."""
 
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import patch
 
 import numpy as np
-import pytest
 
 from wa_automate.face_recognition import dlib_backend
 
@@ -12,7 +11,7 @@ from wa_automate.face_recognition import dlib_backend
 class TestLoadKnownFaces:
     """Test load_known_faces function."""
 
-    @patch('wa_automate.face_recognition.dlib_backend.face_recognition')
+    @patch("wa_automate.face_recognition.dlib_backend.face_recognition")
     def test_load_known_faces_empty_directory(self, mock_fr, temp_dir: Path):
         """Test loading from empty directory."""
         known_dir = temp_dir / "known_people"
@@ -23,7 +22,7 @@ class TestLoadKnownFaces:
         assert encodings_dict == {}
         assert people_list == []
 
-    @patch('wa_automate.face_recognition.dlib_backend.face_recognition')
+    @patch("wa_automate.face_recognition.dlib_backend.face_recognition")
     def test_load_known_faces_with_person(self, mock_fr, temp_dir: Path):
         """Test loading faces for one person."""
         # Setup directory structure
@@ -45,7 +44,7 @@ class TestLoadKnownFaces:
         assert len(encodings_dict["alice"]) == 1
         assert people_list == ["alice"]
 
-    @patch('wa_automate.face_recognition.dlib_backend.face_recognition')
+    @patch("wa_automate.face_recognition.dlib_backend.face_recognition")
     def test_load_known_faces_skips_zone_identifier(self, mock_fr, temp_dir: Path):
         """Test that Zone.Identifier files are skipped."""
         known_dir = temp_dir / "known_people"
@@ -67,7 +66,7 @@ class TestLoadKnownFaces:
         # Should only load the image, not the Zone.Identifier file
         assert mock_fr.load_image_file.call_count == 1
 
-    @patch('wa_automate.face_recognition.dlib_backend.face_recognition')
+    @patch("wa_automate.face_recognition.dlib_backend.face_recognition")
     def test_load_known_faces_multiple_people(self, mock_fr, temp_dir: Path):
         """Test loading faces for multiple people."""
         known_dir = temp_dir / "known_people"
@@ -85,7 +84,7 @@ class TestLoadKnownFaces:
         mock_fr.load_image_file.return_value = np.zeros((100, 100, 3))
         mock_fr.face_encodings.side_effect = [
             [np.array([1, 2, 3])],  # Alice
-            [np.array([4, 5, 6])]   # Bob
+            [np.array([4, 5, 6])],  # Bob
         ]
 
         encodings_dict, people_list = dlib_backend.load_known_faces(str(known_dir))
@@ -99,7 +98,7 @@ class TestLoadKnownFaces:
 class TestBestMatch:
     """Test best_match function."""
 
-    @patch('wa_automate.face_recognition.dlib_backend.face_recognition')
+    @patch("wa_automate.face_recognition.dlib_backend.face_recognition")
     def test_best_match_no_faces(self, mock_fr):
         """Test matching when no faces detected in image."""
         known = {"alice": [np.array([1, 2, 3])]}
@@ -112,7 +111,7 @@ class TestBestMatch:
         assert matched is False
         assert names == []
 
-    @patch('wa_automate.face_recognition.dlib_backend.face_recognition')
+    @patch("wa_automate.face_recognition.dlib_backend.face_recognition")
     def test_best_match_found(self, mock_fr):
         """Test successful face match."""
         known_encoding = np.array([1, 2, 3])
@@ -133,7 +132,7 @@ class TestBestMatch:
         assert matched is True
         assert "alice" in names
 
-    @patch('wa_automate.face_recognition.dlib_backend.face_recognition')
+    @patch("wa_automate.face_recognition.dlib_backend.face_recognition")
     def test_best_match_not_found(self, mock_fr):
         """Test when face doesn't match any known person."""
         known = {"alice": [np.array([1, 2, 3])]}
