@@ -1,0 +1,35 @@
+# Google Cloud Build configuration for DMAF
+# Builds and pushes Docker image to Google Container Registry
+
+steps:
+  # Build the Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/dmaf:$COMMIT_SHA'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/dmaf:latest'
+      - '.'
+
+  # Push the image with commit SHA tag
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/dmaf:$COMMIT_SHA'
+
+  # Push the latest tag
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/dmaf:latest'
+
+# Images to be stored in Container Registry
+images:
+  - 'gcr.io/$PROJECT_ID/dmaf:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/dmaf:latest'
+
+# Build options
+options:
+  machineType: 'N1_HIGHCPU_8'  # Faster builds
+  logging: CLOUD_LOGGING_ONLY

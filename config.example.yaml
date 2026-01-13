@@ -52,7 +52,18 @@ known_people_dir: "./data/known_people"
 # Deduplication settings
 dedup:
   method: "sha256"                 # Hash algorithm for file deduplication
+
+  # Database backend: "sqlite" (local) or "firestore" (cloud)
+  backend: "sqlite"
+
+  # SQLite configuration (for local/testing)
   db_path: "./data/state.sqlite3"  # SQLite database for tracking processed files
+
+  # Firestore configuration (for cloud deployment)
+  # Uncomment and configure when deploying to GCP:
+  # backend: "firestore"
+  # firestore_project: "your-gcp-project-id"
+  # firestore_collection: "dmaf_files"  # Firestore collection name (default: dmaf_files)
 
 # Logging level: DEBUG, INFO, WARNING, ERROR, CRITICAL
 log_level: "INFO"
