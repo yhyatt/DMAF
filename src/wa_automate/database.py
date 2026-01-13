@@ -94,11 +94,11 @@ class FirestoreDatabase:
         """
         try:
             from google.cloud import firestore
-        except ImportError:
+        except ImportError as e:
             raise ImportError(
                 "google-cloud-firestore not installed. "
                 "Install with: pip install google-cloud-firestore"
-            )
+            ) from e
 
         self.db = firestore.Client(project=project_id)
         self.collection = self.db.collection(collection)

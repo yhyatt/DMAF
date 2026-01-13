@@ -107,7 +107,6 @@ def scan_and_process_once(dirs, handler) -> ScanResult:
     new_files = 0
     processed = 0
     matched = 0
-    uploaded_before = 0
     errors = 0
 
     image_extensions = {".jpg", ".jpeg", ".png", ".heic", ".webp"}

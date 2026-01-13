@@ -107,7 +107,7 @@ def load_known_faces(
                 augmented_images = [("original", np.array(img_pil))]
 
             # Extract face encodings from original + augmented versions
-            for aug_name, img_np in augmented_images:
+            for _aug_name, img_np in augmented_images:
                 embs = _embed_faces(app, img_np, min_face_size)
                 encodings[person].extend(embs)
 
