@@ -1,11 +1,10 @@
 # face_index.py (InsightFace backend)
-from pathlib import Path
-from typing import Dict, List, Tuple
 import threading
+from pathlib import Path
+
 import numpy as np
-from PIL import Image
-import insightface
 from insightface.app import FaceAnalysis
+from PIL import Image
 
 # Thread-safe singleton for FaceAnalysis model
 _app_lock = threading.Lock()
@@ -25,7 +24,9 @@ def _get_app() -> FaceAnalysis:
         with _app_lock:
             # Double-check locking pattern
             if _app_instance is None:
-                app = FaceAnalysis(name="buffalo_l")  # balanced accuracy/speed (ResNet-50, 99.7% LFW)
+                app = FaceAnalysis(
+                    name="buffalo_l"
+                )  # balanced accuracy/speed (ResNet-50, 99.7% LFW)
                 # ctx_id=-1 = CPU; set 0 if you configured CUDA in WSL
                 # det_thresh=0.4 lowers detection confidence slightly for better recall
                 # (default 0.5 was missing some faces, but 0.35 was too permissive)
@@ -35,10 +36,12 @@ def _get_app() -> FaceAnalysis:
 
     return _app_instance
 
+
 def _img_to_np(path: Path) -> np.ndarray:
     return np.array(Image.open(path).convert("RGB"))
 
-def _embed_faces(app: FaceAnalysis, img_np: np.ndarray, min_face: int) -> List[np.ndarray]:
+
+def _embed_faces(app: FaceAnalysis, img_np: np.ndarray, min_face: int) -> list[np.ndarray]:
     faces = app.get(img_np)
     # filter tiny detections
     out = []
@@ -49,11 +52,10 @@ def _embed_faces(app: FaceAnalysis, img_np: np.ndarray, min_face: int) -> List[n
             out.append(f.normed_embedding.astype(np.float32))
     return out
 
+
 def load_known_faces(
-    known_root: str,
-    min_face_size: int = 80,
-    enable_augmentation: bool = True
-) -> Tuple[Dict[str, List[np.ndarray]], List[str]]:
+    known_root: str, min_face_size: int = 80, enable_augmentation: bool = True
+) -> tuple[dict[str, list[np.ndarray]], list[str]]:
     """
     Load known faces from directory with optional augmentation.
 
@@ -69,9 +71,9 @@ def load_known_faces(
         face encodings, and people_list is the list of person names.
     """
     app = _get_app()
-    encodings: Dict[str, List[np.ndarray]] = {}
-    people: List[str] = []
-    valid_extensions = {'.jpg', '.jpeg', '.png', '.heic', '.webp'}
+    encodings: dict[str, list[np.ndarray]] = {}
+    people: list[str] = []
+    valid_extensions = {".jpg", ".jpeg", ".png", ".heic", ".webp"}
 
     for person_dir in Path(known_root).iterdir():
         if not person_dir.is_dir():
@@ -82,7 +84,10 @@ def load_known_faces(
 
         for img_path in person_dir.glob("*.*"):
             # Skip Zone.Identifier and other non-image files
-            if 'Zone.Identifier' in img_path.name or img_path.suffix.lower() not in valid_extensions:
+            if (
+                "Zone.Identifier" in img_path.name
+                or img_path.suffix.lower() not in valid_extensions
+            ):
                 continue
 
             try:
@@ -93,7 +98,10 @@ def load_known_faces(
 
             # Apply augmentation if enabled
             if enable_augmentation:
-                from wa_automate.face_recognition.augmentation import apply_conservative_augmentation
+                from wa_automate.face_recognition.augmentation import (
+                    apply_conservative_augmentation,
+                )
+
                 augmented_images = apply_conservative_augmentation(img_pil)
             else:
                 augmented_images = [("original", np.array(img_pil))]
@@ -105,16 +113,20 @@ def load_known_faces(
 
     return encodings, people
 
+
 def _cosine_sim(a: np.ndarray, b: np.ndarray) -> float:
     # inputs are expected normalized, but guard anyway
     a = a / max(np.linalg.norm(a), 1e-6)
     b = b / max(np.linalg.norm(b), 1e-6)
     return float(np.dot(a, b))
 
-def best_match(known: Dict[str, List[np.ndarray]],
-               img_rgb: np.ndarray,
-               tolerance: float = 0.40,
-               min_face_size: int = 80) -> Tuple[bool, List[str]]:
+
+def best_match(
+    known: dict[str, list[np.ndarray]],
+    img_rgb: np.ndarray,
+    tolerance: float = 0.40,
+    min_face_size: int = 80,
+) -> tuple[bool, list[str]]:
     """
     Find matching faces in an image using InsightFace.
 

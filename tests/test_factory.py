@@ -1,6 +1,6 @@
 """Tests for face recognition backend factory."""
 
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
@@ -17,18 +17,16 @@ class TestGetBackend:
 
     def test_get_face_recognition_backend(self):
         """Test loading face_recognition backend."""
-        with patch.dict('sys.modules', {
-            'wa_automate.face_recognition.dlib_backend': MagicMock()
-        }):
+        with patch.dict("sys.modules", {"wa_automate.face_recognition.dlib_backend": MagicMock()}):
             backend = factory._get_backend("face_recognition")
             assert backend is not None
             assert "face_recognition" in factory._backend_cache
 
     def test_get_insightface_backend(self):
         """Test loading insightface backend."""
-        with patch.dict('sys.modules', {
-            'wa_automate.face_recognition.insightface_backend': MagicMock()
-        }):
+        with patch.dict(
+            "sys.modules", {"wa_automate.face_recognition.insightface_backend": MagicMock()}
+        ):
             backend = factory._get_backend("insightface")
             assert backend is not None
             assert "insightface" in factory._backend_cache
@@ -45,9 +43,7 @@ class TestGetBackend:
         """Test that backends are cached after first load."""
         mock_backend = MagicMock()
 
-        with patch.dict('sys.modules', {
-            'wa_automate.face_recognition.dlib_backend': mock_backend
-        }):
+        with patch.dict("sys.modules", {"wa_automate.face_recognition.dlib_backend": mock_backend}):
             # First call loads backend
             backend1 = factory._get_backend("face_recognition")
 
@@ -73,10 +69,9 @@ class TestLoadKnownFaces:
         mock_people = ["alice"]
         mock_backend.load_known_faces.return_value = (mock_encodings, mock_people)
 
-        with patch('wa_automate.face_recognition.factory._get_backend', return_value=mock_backend):
+        with patch("wa_automate.face_recognition.factory._get_backend", return_value=mock_backend):
             encodings, people = factory.load_known_faces(
-                "/path/to/known_people",
-                backend_name="face_recognition"
+                "/path/to/known_people", backend_name="face_recognition"
             )
 
             # Verify backend was called correctly
@@ -94,17 +89,14 @@ class TestLoadKnownFaces:
         mock_people = ["bob"]
         mock_backend.load_known_faces.return_value = (mock_encodings, mock_people)
 
-        with patch('wa_automate.face_recognition.factory._get_backend', return_value=mock_backend):
+        with patch("wa_automate.face_recognition.factory._get_backend", return_value=mock_backend):
             encodings, people = factory.load_known_faces(
-                "/path/to/known_people",
-                backend_name="insightface",
-                min_face_size=100
+                "/path/to/known_people", backend_name="insightface", min_face_size=100
             )
 
-            # InsightFace backend gets min_face_size parameter
+            # InsightFace backend gets min_face_size and enable_augmentation parameters
             mock_backend.load_known_faces.assert_called_once_with(
-                "/path/to/known_people",
-                100
+                "/path/to/known_people", 100, True
             )
 
             assert encodings == mock_encodings
@@ -115,7 +107,9 @@ class TestLoadKnownFaces:
         mock_backend = MagicMock()
         mock_backend.load_known_faces.return_value = ({}, [])
 
-        with patch('wa_automate.face_recognition.factory._get_backend', return_value=mock_backend) as mock_get:
+        with patch(
+            "wa_automate.face_recognition.factory._get_backend", return_value=mock_backend
+        ) as mock_get:
             factory.load_known_faces("/path/to/known_people")
 
             # Should use face_recognition as default
@@ -126,12 +120,10 @@ class TestLoadKnownFaces:
         mock_backend = MagicMock()
         mock_backend.load_known_faces.return_value = ({}, [])
 
-        with patch('wa_automate.face_recognition.factory._get_backend', return_value=mock_backend):
+        with patch("wa_automate.face_recognition.factory._get_backend", return_value=mock_backend):
             # min_face_size is provided but shouldn't be passed to face_recognition
             factory.load_known_faces(
-                "/path/to/known_people",
-                backend_name="face_recognition",
-                min_face_size=50
+                "/path/to/known_people", backend_name="face_recognition", min_face_size=50
             )
 
             # face_recognition backend only gets the path
@@ -154,13 +146,13 @@ class TestBestMatch:
         known_faces = {"alice": [np.array([1, 2, 3])]}
         test_image = np.zeros((100, 100, 3), dtype=np.uint8)
 
-        with patch('wa_automate.face_recognition.factory._get_backend', return_value=mock_backend):
+        with patch("wa_automate.face_recognition.factory._get_backend", return_value=mock_backend):
             matched, names = factory.best_match(
                 known_faces,
                 test_image,
                 backend_name="face_recognition",
                 tolerance=0.5,
-                min_face_size=80
+                min_face_size=80,
             )
 
             # Verify backend was called with correct parameters
@@ -181,19 +173,16 @@ class TestBestMatch:
         mock_backend = MagicMock()
         mock_backend.best_match.return_value = (True, ["bob", "charlie"])
 
-        known_faces = {
-            "bob": [np.array([1, 2, 3])],
-            "charlie": [np.array([4, 5, 6])]
-        }
+        known_faces = {"bob": [np.array([1, 2, 3])], "charlie": [np.array([4, 5, 6])]}
         test_image = np.zeros((200, 200, 3), dtype=np.uint8)
 
-        with patch('wa_automate.face_recognition.factory._get_backend', return_value=mock_backend):
+        with patch("wa_automate.face_recognition.factory._get_backend", return_value=mock_backend):
             matched, names = factory.best_match(
                 known_faces,
                 test_image,
                 backend_name="insightface",
                 tolerance=0.4,
-                min_face_size=100
+                min_face_size=100,
             )
 
             assert matched is True
@@ -207,11 +196,9 @@ class TestBestMatch:
         known_faces = {"alice": [np.array([1, 2, 3])]}
         test_image = np.zeros((100, 100, 3), dtype=np.uint8)
 
-        with patch('wa_automate.face_recognition.factory._get_backend', return_value=mock_backend):
+        with patch("wa_automate.face_recognition.factory._get_backend", return_value=mock_backend):
             matched, names = factory.best_match(
-                known_faces,
-                test_image,
-                backend_name="face_recognition"
+                known_faces, test_image, backend_name="face_recognition"
             )
 
             assert matched is False
@@ -222,11 +209,10 @@ class TestBestMatch:
         mock_backend = MagicMock()
         mock_backend.best_match.return_value = (False, [])
 
-        with patch('wa_automate.face_recognition.factory._get_backend', return_value=mock_backend) as mock_get:
-            factory.best_match(
-                {},
-                np.zeros((100, 100, 3), dtype=np.uint8)
-            )
+        with patch(
+            "wa_automate.face_recognition.factory._get_backend", return_value=mock_backend
+        ) as mock_get:
+            factory.best_match({}, np.zeros((100, 100, 3), dtype=np.uint8))
 
             # Should use face_recognition as default
             mock_get.assert_called_with("face_recognition")
@@ -241,12 +227,8 @@ class TestBestMatch:
         mock_backend = MagicMock()
         mock_backend.best_match.return_value = (False, [])
 
-        with patch('wa_automate.face_recognition.factory._get_backend', return_value=mock_backend):
-            factory.best_match(
-                {},
-                np.zeros((100, 100, 3), dtype=np.uint8),
-                tolerance=0.3
-            )
+        with patch("wa_automate.face_recognition.factory._get_backend", return_value=mock_backend):
+            factory.best_match({}, np.zeros((100, 100, 3), dtype=np.uint8), tolerance=0.3)
 
             call_kwargs = mock_backend.best_match.call_args[1]
             assert call_kwargs["tolerance"] == 0.3
@@ -265,7 +247,9 @@ class TestFactoryIntegration:
         mock_backend.load_known_faces.return_value = ({"alice": []}, ["alice"])
         mock_backend.best_match.return_value = (True, ["alice"])
 
-        with patch('wa_automate.face_recognition.factory._get_backend', return_value=mock_backend) as mock_get:
+        with patch(
+            "wa_automate.face_recognition.factory._get_backend", return_value=mock_backend
+        ) as mock_get:
             # Call load_known_faces
             factory.load_known_faces("/path", backend_name="face_recognition")
 
@@ -291,7 +275,9 @@ class TestFactoryIntegration:
         mock_dlib.best_match.return_value = (False, [])
         mock_insightface.best_match.return_value = (False, [])
 
-        with patch('wa_automate.face_recognition.factory._get_backend', side_effect=get_backend_side_effect):
+        with patch(
+            "wa_automate.face_recognition.factory._get_backend", side_effect=get_backend_side_effect
+        ):
             # Use both backends
             factory.best_match({}, np.zeros((10, 10, 3)), backend_name="face_recognition")
             factory.best_match({}, np.zeros((10, 10, 3)), backend_name="insightface")

@@ -9,7 +9,6 @@ commit their contents. Results stay local.
 
 import time
 from pathlib import Path
-from typing import Dict, List, Tuple
 
 import numpy as np
 import pytest
@@ -44,7 +43,7 @@ class TestValidationHelpers:
 
         # For each image, verify train/test split
         for i, test_img in enumerate(images):
-            train_imgs = images[:i] + images[i+1:]  # Leave one out
+            train_imgs = images[:i] + images[i + 1 :]  # Leave one out
 
             # Test image should NOT be in training set
             assert test_img not in train_imgs
@@ -108,13 +107,17 @@ class TestBackendAccuracy:
 
             # LOOCV: For each image, train on N-1, test on 1
             for test_idx, test_img_path in enumerate(images):
-                print(f"  LOOCV {test_idx+1}/{len(images)}: Testing {test_img_path.name}...", end=" ", flush=True)
+                print(
+                    f"  LOOCV {test_idx+1}/{len(images)}: Testing {test_img_path.name}...",
+                    end=" ",
+                    flush=True,
+                )
                 # Build training set (all images EXCEPT test image)
                 train_img_paths = [img for j, img in enumerate(images) if j != test_idx]
 
                 # Use load_known_faces with LOOCV structure
-                import tempfile
                 import shutil
+                import tempfile
 
                 with tempfile.TemporaryDirectory() as tmpdir:
                     tmp_path = Path(tmpdir)
@@ -129,9 +132,7 @@ class TestBackendAccuracy:
                     # Both backends use min_face_size=80 at det_size=(640, 640)
                     min_face_size = 80
                     encodings, _ = factory.load_known_faces(
-                        str(tmp_path),
-                        backend_name=backend_name,
-                        min_face_size=min_face_size
+                        str(tmp_path), backend_name=backend_name, min_face_size=min_face_size
                     )
 
                     # Now test if held-out image matches
@@ -144,7 +145,7 @@ class TestBackendAccuracy:
                         test_img_np,
                         backend_name=backend_name,
                         tolerance=tolerance,
-                        min_face_size=min_face_size
+                        min_face_size=min_face_size,
                     )
 
                     results["total"] += 1
@@ -198,8 +199,12 @@ class TestBackendAccuracy:
             test_person_name = test_person_dir.name
             test_images = list(test_person_dir.glob("*.jpg")) + list(test_person_dir.glob("*.png"))
 
-            for img_idx, test_img_path in enumerate(test_images[:3], 1):  # Limit to 3 images per person for speed
-                print(f"Person {test_person_idx}/{len(person_dirs)}: {test_person_name} - Image {img_idx}/3")
+            for img_idx, test_img_path in enumerate(
+                test_images[:3], 1
+            ):  # Limit to 3 images per person for speed
+                print(
+                    f"Person {test_person_idx}/{len(person_dirs)}: {test_person_name} - Image {img_idx}/3"
+                )
                 test_img = Image.open(test_img_path).convert("RGB")
                 test_img_np = np.array(test_img)
 
@@ -209,11 +214,15 @@ class TestBackendAccuracy:
                         continue  # Skip same person
 
                     other_person_name = other_person_dir.name
-                    print(f"  Testing {test_person_name} vs {other_person_name}...", end=" ", flush=True)
+                    print(
+                        f"  Testing {test_person_name} vs {other_person_name}...",
+                        end=" ",
+                        flush=True,
+                    )
 
                     # Load encodings for the OTHER person
-                    import tempfile
                     import shutil
+                    import tempfile
 
                     with tempfile.TemporaryDirectory() as tmpdir:
                         tmp_path = Path(tmpdir)
@@ -227,9 +236,7 @@ class TestBackendAccuracy:
                         # Both backends use min_face_size=80
                         min_face_size = 80
                         encodings, _ = factory.load_known_faces(
-                            str(tmp_path),
-                            backend_name=backend_name,
-                            min_face_size=min_face_size
+                            str(tmp_path), backend_name=backend_name, min_face_size=min_face_size
                         )
 
                         # Try to match test image against wrong person
@@ -239,7 +246,7 @@ class TestBackendAccuracy:
                             test_img_np,
                             backend_name=backend_name,
                             tolerance=tolerance,
-                            min_face_size=min_face_size
+                            min_face_size=min_face_size,
                         )
 
                         results["total"] += 1
@@ -265,7 +272,9 @@ class TestBackendAccuracy:
 
     @pytest.mark.slow
     @pytest.mark.parametrize("backend_name", ["face_recognition", "insightface"])
-    def test_unknown_people_rejection(self, known_people_path: Path, unknown_people_path: Path, backend_name: str):
+    def test_unknown_people_rejection(
+        self, known_people_path: Path, unknown_people_path: Path, backend_name: str
+    ):
         """
         Real-world FPR: Test 107 strangers against 4 known people.
 
@@ -276,22 +285,22 @@ class TestBackendAccuracy:
         """
         print(f"\n{'='*60}")
         print(f"Unknown People Rejection Test for {backend_name} backend")
-        print(f"Testing 107 strangers vs 4 known people")
+        print("Testing 107 strangers vs 4 known people")
         print(f"{'='*60}\n")
 
         # Load ALL known people encodings
         min_face_size = 80
         known_encodings, _ = factory.load_known_faces(
-            str(known_people_path),
-            backend_name=backend_name,
-            min_face_size=min_face_size
+            str(known_people_path), backend_name=backend_name, min_face_size=min_face_size
         )
 
         results = {"false_positives": 0, "true_negatives": 0, "no_face": 0, "total": 0}
         tolerance = 0.55 if backend_name == "face_recognition" else 0.42
 
         # Test each unknown person image
-        unknown_images = list(unknown_people_path.glob("*.jpg")) + list(unknown_people_path.glob("*.png"))
+        unknown_images = list(unknown_people_path.glob("*.jpg")) + list(
+            unknown_people_path.glob("*.png")
+        )
         print(f"Testing {len(unknown_images)} unknown people images...")
 
         for i, unknown_img_path in enumerate(unknown_images, 1):
@@ -307,7 +316,7 @@ class TestBackendAccuracy:
                 unknown_img_np,
                 backend_name=backend_name,
                 tolerance=tolerance,
-                min_face_size=min_face_size
+                min_face_size=min_face_size,
             )
 
             results["total"] += 1
@@ -337,7 +346,9 @@ class TestBackendAccuracy:
 
             # Warn if FPR > 5% (acceptable but not ideal)
             if fpr > 0.05:
-                print(f"\n⚠️  WARNING: {backend_name} FPR {fpr:.1%} exceeds 5% - consider insightface for better precision")
+                print(
+                    f"\n⚠️  WARNING: {backend_name} FPR {fpr:.1%} exceeds 5% - consider insightface for better precision"
+                )
 
 
 class TestBackendPerformance:
@@ -350,6 +361,7 @@ class TestBackendPerformance:
         # Reset singleton for insightface
         if backend_name == "insightface":
             import wa_automate.face_recognition.insightface_backend as ib
+
             ib._app_instance = None
 
         start = time.time()
@@ -357,11 +369,13 @@ class TestBackendPerformance:
         # Trigger model loading
         if backend_name == "face_recognition":
             import face_recognition
+
             # dlib model loads on first use
             dummy_img = np.zeros((100, 100, 3), dtype=np.uint8)
             face_recognition.face_locations(dummy_img)
         else:
             import wa_automate.face_recognition.insightface_backend as ib
+
             _ = ib._get_app()
 
         load_time_ms = (time.time() - start) * 1000

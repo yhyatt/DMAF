@@ -3,8 +3,9 @@
 Provides various augmentation strategies to test impact on recognition accuracy.
 """
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import List, Tuple, Callable
+
 import numpy as np
 from PIL import Image, ImageEnhance, ImageFilter
 
@@ -70,55 +71,45 @@ def color_jitter(img: Image.Image, saturation_factor: float) -> Image.Image:
 # Augmentation strategies: (name, list of augmentation functions)
 AUGMENTATION_STRATEGIES = {
     "none": [],
-
     "flip_only": [
         horizontal_flip,
     ],
-
     "brightness": [
-        lambda img: adjust_brightness(img, 0.7),   # Darker
-        lambda img: adjust_brightness(img, 1.3),   # Brighter
+        lambda img: adjust_brightness(img, 0.7),  # Darker
+        lambda img: adjust_brightness(img, 1.3),  # Brighter
     ],
-
     "rotation": [
-        lambda img: rotate_image(img, -5),   # Slight left rotation
-        lambda img: rotate_image(img, 5),    # Slight right rotation
+        lambda img: rotate_image(img, -5),  # Slight left rotation
+        lambda img: rotate_image(img, 5),  # Slight right rotation
     ],
-
     "contrast": [
-        lambda img: adjust_contrast(img, 0.8),   # Less contrast
-        lambda img: adjust_contrast(img, 1.2),   # More contrast
+        lambda img: adjust_contrast(img, 0.8),  # Less contrast
+        lambda img: adjust_contrast(img, 1.2),  # More contrast
     ],
-
     "blur": [
         lambda img: gaussian_blur(img, radius=1.0),
     ],
-
     "color": [
-        lambda img: color_jitter(img, 0.7),   # Desaturated
-        lambda img: color_jitter(img, 1.3),   # More saturated
+        lambda img: color_jitter(img, 0.7),  # Desaturated
+        lambda img: color_jitter(img, 1.3),  # More saturated
     ],
-
     # Combined strategies
     "flip_brightness": [
         horizontal_flip,
         lambda img: adjust_brightness(img, 0.7),
         lambda img: adjust_brightness(img, 1.3),
     ],
-
     "flip_rotation": [
         horizontal_flip,
         lambda img: rotate_image(img, -5),
         lambda img: rotate_image(img, 5),
     ],
-
     "conservative": [
         # Conservative augmentations: flip + slight brightness
         horizontal_flip,
         lambda img: adjust_brightness(img, 0.8),
         lambda img: adjust_brightness(img, 1.2),
     ],
-
     "aggressive": [
         # All augmentations combined
         horizontal_flip,
@@ -134,9 +125,8 @@ AUGMENTATION_STRATEGIES = {
 
 
 def apply_augmentations(
-    img_path: Path,
-    augmentation_fns: List[Callable[[Image.Image], Image.Image]]
-) -> List[Tuple[str, np.ndarray]]:
+    img_path: Path, augmentation_fns: list[Callable[[Image.Image], Image.Image]]
+) -> list[tuple[str, np.ndarray]]:
     """
     Apply augmentation functions to an image.
 

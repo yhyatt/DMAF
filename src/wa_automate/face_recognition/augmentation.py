@@ -4,7 +4,6 @@ Applies conservative augmentations to improve recognition accuracy while
 maintaining low false positive rates.
 """
 
-from typing import List, Tuple
 import numpy as np
 from PIL import Image, ImageEnhance
 
@@ -25,7 +24,7 @@ def adjust_brightness(img: Image.Image, factor: float) -> Image.Image:
     return enhancer.enhance(factor)
 
 
-def apply_conservative_augmentation(img: Image.Image) -> List[Tuple[str, np.ndarray]]:
+def apply_conservative_augmentation(img: Image.Image) -> list[tuple[str, np.ndarray]]:
     """
     Apply conservative augmentation strategy (flip + brightness ±20%).
 
@@ -62,9 +61,8 @@ def apply_conservative_augmentation(img: Image.Image) -> List[Tuple[str, np.ndar
 
 
 def apply_augmentation_to_image(
-    img: Image.Image,
-    enable_augmentation: bool = True
-) -> List[Tuple[str, np.ndarray]]:
+    img: Image.Image, enable_augmentation: bool = True
+) -> list[tuple[str, np.ndarray]]:
     """
     Apply augmentation if enabled, otherwise return original only.
 

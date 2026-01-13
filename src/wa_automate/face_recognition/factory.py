@@ -7,7 +7,7 @@ Supported backends:
 - 'insightface': Deep learning-based face recognition (more accurate)
 """
 
-from typing import Dict, List, Tuple
+
 import numpy as np
 
 # Module-level cache for backend instances (singleton pattern)
@@ -18,8 +18,8 @@ def load_known_faces(
     known_root: str,
     backend_name: str = "face_recognition",
     min_face_size: int = 80,
-    enable_augmentation: bool = True
-) -> Tuple[Dict[str, List[np.ndarray]], List[str]]:
+    enable_augmentation: bool = True,
+) -> tuple[dict[str, list[np.ndarray]], list[str]]:
     """
     Load known faces from a directory structure.
 
@@ -55,11 +55,13 @@ def load_known_faces(
         return backend.load_known_faces(known_root)
 
 
-def best_match(known: Dict[str, List[np.ndarray]],
-               img_rgb: np.ndarray,
-               backend_name: str = "face_recognition",
-               tolerance: float = 0.52,
-               min_face_size: int = 80) -> Tuple[bool, List[str]]:
+def best_match(
+    known: dict[str, list[np.ndarray]],
+    img_rgb: np.ndarray,
+    backend_name: str = "face_recognition",
+    tolerance: float = 0.52,
+    min_face_size: int = 80,
+) -> tuple[bool, list[str]]:
     """
     Find the best match for faces in an image.
 

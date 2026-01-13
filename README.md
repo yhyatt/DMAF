@@ -1,5 +1,8 @@
 # wa_automate
 
+![CI](https://github.com/yonatan/wa_automate/workflows/CI/badge.svg)
+[![codecov](https://codecov.io/gh/yonatan/wa_automate/branch/main/graph/badge.svg)](https://codecov.io/gh/yonatan/wa_automate)
+
 Automated WhatsApp media backup with face recognition filtering.
 
 ## Overview

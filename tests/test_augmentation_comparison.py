@@ -4,23 +4,21 @@ Tests various augmentation strategies to determine if they improve TPR
 (same-person matching) while maintaining low FPR (stranger rejection).
 """
 
-import time
 from pathlib import Path
-from typing import Dict, List, Tuple
 
 import numpy as np
 import pytest
 from PIL import Image
 
-from wa_automate.face_recognition import factory
 from tests.augmentation_utils import (
     AUGMENTATION_STRATEGIES,
+    adjust_brightness,
     apply_augmentations,
     get_strategy_description,
     horizontal_flip,
-    adjust_brightness,
     rotate_image,
 )
+from wa_automate.face_recognition import factory
 
 
 class TestAugmentationUtilities:
@@ -101,19 +99,18 @@ class TestAugmentationImpact:
     """Compare recognition accuracy with different augmentation strategies."""
 
     @pytest.mark.slow
-    @pytest.mark.parametrize("strategy_name", [
-        "none",           # Baseline
-        "flip_only",      # Most common augmentation
-        "brightness",     # Lighting variations
-        "rotation",       # Slight angle changes
-        "conservative",   # Flip + slight brightness
-        "aggressive",     # All augmentations
-    ])
-    def test_augmentation_loocv_insightface(
-        self,
-        known_people_path: Path,
-        strategy_name: str
-    ):
+    @pytest.mark.parametrize(
+        "strategy_name",
+        [
+            "none",  # Baseline
+            "flip_only",  # Most common augmentation
+            "brightness",  # Lighting variations
+            "rotation",  # Slight angle changes
+            "conservative",  # Flip + slight brightness
+            "aggressive",  # All augmentations
+        ],
+    )
+    def test_augmentation_loocv_insightface(self, known_people_path: Path, strategy_name: str):
         """
         Test augmentation impact on same-person matching using LOOCV.
 
@@ -155,7 +152,11 @@ class TestAugmentationImpact:
 
             # LOOCV: For each image, train on N-1, test on 1
             for test_idx, test_img_path in enumerate(images):
-                print(f"  LOOCV {test_idx+1}/{len(images)}: {test_img_path.name}...", end=" ", flush=True)
+                print(
+                    f"  LOOCV {test_idx+1}/{len(images)}: {test_img_path.name}...",
+                    end=" ",
+                    flush=True,
+                )
 
                 # Build training set (all images EXCEPT test image)
                 train_img_paths = [img for j, img in enumerate(images) if j != test_idx]
@@ -174,7 +175,11 @@ class TestAugmentationImpact:
                         tolerance = 0.42
 
                         # Create temporary dict for this single image
-                        from wa_automate.face_recognition.insightface_backend import _get_app, _embed_faces
+                        from wa_automate.face_recognition.insightface_backend import (
+                            _embed_faces,
+                            _get_app,
+                        )
+
                         app = _get_app()
                         embs = _embed_faces(app, img_array, min_face_size)
                         train_encodings.extend(embs)
@@ -191,7 +196,7 @@ class TestAugmentationImpact:
                     test_img_np,
                     backend_name=backend_name,
                     tolerance=tolerance,
-                    min_face_size=min_face_size
+                    min_face_size=min_face_size,
                 )
 
                 results["total"] += 1
@@ -230,17 +235,17 @@ class TestAugmentationImpact:
                 assert tpr > 0.65, f"{strategy_name} TPR {tpr:.1%} severely degraded"
 
     @pytest.mark.slow
-    @pytest.mark.parametrize("strategy_name", [
-        "none",           # Baseline
-        "flip_only",
-        "conservative",
-        "aggressive",
-    ])
+    @pytest.mark.parametrize(
+        "strategy_name",
+        [
+            "none",  # Baseline
+            "flip_only",
+            "conservative",
+            "aggressive",
+        ],
+    )
     def test_augmentation_unknown_people_fpr(
-        self,
-        known_people_path: Path,
-        unknown_people_path: Path,
-        strategy_name: str
+        self, known_people_path: Path, unknown_people_path: Path, strategy_name: str
     ):
         """
         Test augmentation impact on unknown people FPR.
@@ -256,7 +261,7 @@ class TestAugmentationImpact:
         print(f"\n{'='*70}")
         print(f"Unknown People FPR Test: {strategy_name}")
         print(f"Description: {get_strategy_description(strategy_name)}")
-        print(f"Testing 107 strangers vs augmented known encodings")
+        print("Testing 107 strangers vs augmented known encodings")
         print(f"{'='*70}\n")
 
         # Load and augment ALL known people images
@@ -271,7 +276,7 @@ class TestAugmentationImpact:
             person_encodings = []
 
             for img_path in person_dir.glob("*.jpg"):
-                if 'Zone.Identifier' in img_path.name:
+                if "Zone.Identifier" in img_path.name:
                     continue
 
                 # Apply augmentations
@@ -280,7 +285,11 @@ class TestAugmentationImpact:
 
                 # Extract encodings
                 for aug_name, img_array in augmented_imgs:
-                    from wa_automate.face_recognition.insightface_backend import _get_app, _embed_faces
+                    from wa_automate.face_recognition.insightface_backend import (
+                        _embed_faces,
+                        _get_app,
+                    )
+
                     app = _get_app()
                     embs = _embed_faces(app, img_array, min_face=80)
                     person_encodings.extend(embs)
@@ -294,7 +303,9 @@ class TestAugmentationImpact:
         tolerance = 0.42
         min_face_size = 80
 
-        unknown_images = list(unknown_people_path.glob("*.jpg")) + list(unknown_people_path.glob("*.png"))
+        unknown_images = list(unknown_people_path.glob("*.jpg")) + list(
+            unknown_people_path.glob("*.png")
+        )
         print(f"Testing {len(unknown_images)} unknown people images...\n")
 
         for i, unknown_img_path in enumerate(unknown_images, 1):
@@ -310,7 +321,7 @@ class TestAugmentationImpact:
                 unknown_img_np,
                 backend_name=backend_name,
                 tolerance=tolerance,
-                min_face_size=min_face_size
+                min_face_size=min_face_size,
             )
 
             results["total"] += 1
@@ -352,9 +363,9 @@ class TestAugmentationComparison:
         This is a helper test that prints a summary table.
         Not a validation test - always passes.
         """
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("AUGMENTATION STRATEGIES SUMMARY")
-        print("="*80)
+        print("=" * 80)
 
         for strategy_name, aug_fns in AUGMENTATION_STRATEGIES.items():
             num_augmentations = len(aug_fns)
@@ -363,12 +374,14 @@ class TestAugmentationComparison:
             print(f"\n{strategy_name}:")
             print(f"  Description: {description}")
             print(f"  Augmentations: {num_augmentations}")
-            print(f"  Training multiplier: {num_augmentations + 1}x (original + {num_augmentations} aug)")
+            print(
+                f"  Training multiplier: {num_augmentations + 1}x (original + {num_augmentations} aug)"
+            )
 
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("To run full comparison:")
         print("  pytest tests/test_augmentation_comparison.py -v -m slow")
-        print("="*80 + "\n")
+        print("=" * 80 + "\n")
 
         # Always pass - this is just informational
         assert True

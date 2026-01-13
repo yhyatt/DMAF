@@ -125,9 +125,7 @@ class Settings(BaseSettings):
         """Validate that required paths exist or can be created."""
         # known_people_dir should exist
         if not self.known_people_dir.exists():
-            raise ValueError(
-                f"known_people_dir does not exist: {self.known_people_dir}"
-            )
+            raise ValueError(f"known_people_dir does not exist: {self.known_people_dir}")
         return self
 
     @classmethod
