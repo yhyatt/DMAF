@@ -5,6 +5,10 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 import numpy as np
+import pytest
+
+# Skip all tests in this module if insightface is not installed
+pytest.importorskip("insightface")
 
 from wa_automate.face_recognition import insightface_backend
 
