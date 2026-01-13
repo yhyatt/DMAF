@@ -8,10 +8,13 @@ Supported backends:
 """
 
 
+from types import ModuleType
+from typing import Any
+
 import numpy as np
 
 # Module-level cache for backend instances (singleton pattern)
-_backend_cache = {}
+_backend_cache: dict[str, ModuleType] = {}
 
 
 def load_known_faces(
@@ -49,10 +52,14 @@ def load_known_faces(
 
     if backend_name == "insightface":
         # InsightFace backend supports augmentation
-        return backend.load_known_faces(known_root, min_face_size, enable_augmentation)
+        result: tuple[dict[str, list[np.ndarray]], list[str]] = backend.load_known_faces(
+            known_root, min_face_size, enable_augmentation
+        )
+        return result
     else:
         # face_recognition backend doesn't support augmentation yet
-        return backend.load_known_faces(known_root)
+        result = backend.load_known_faces(known_root)
+        return result
 
 
 def best_match(
@@ -80,10 +87,13 @@ def best_match(
         - person_names: List of matched person names
     """
     backend = _get_backend(backend_name)
-    return backend.best_match(known, img_rgb, tolerance=tolerance, min_face_size=min_face_size)
+    result: tuple[bool, list[str]] = backend.best_match(
+        known, img_rgb, tolerance=tolerance, min_face_size=min_face_size
+    )
+    return result
 
 
-def _get_backend(backend_name: str):
+def _get_backend(backend_name: str) -> ModuleType:
     """
     Get or load the appropriate backend module.
 
@@ -92,10 +102,15 @@ def _get_backend(backend_name: str):
     if backend_name in _backend_cache:
         return _backend_cache[backend_name]
 
+    backend: ModuleType
     if backend_name == "face_recognition":
-        from wa_automate.face_recognition import dlib_backend as backend
+        from wa_automate.face_recognition import dlib_backend
+
+        backend = dlib_backend
     elif backend_name == "insightface":
-        from wa_automate.face_recognition import insightface_backend as backend
+        from wa_automate.face_recognition import insightface_backend
+
+        backend = insightface_backend
     else:
         raise ValueError(
             f"Unknown backend: {backend_name}. "

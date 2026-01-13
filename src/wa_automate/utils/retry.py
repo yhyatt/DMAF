@@ -28,7 +28,7 @@ class RetryConfig:
         self.retryable_status_codes = retryable_status_codes
 
 
-def with_retry(config: RetryConfig = None):
+def with_retry(config: RetryConfig | None = None):
     """
     Decorator for retry with exponential backoff.
 
@@ -49,7 +49,7 @@ def with_retry(config: RetryConfig = None):
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
         @wraps(func)
         def wrapper(*args, **kwargs) -> T:
-            last_exception = None
+            last_exception: Exception | None = None
 
             for attempt in range(config.max_retries + 1):
                 try:
