@@ -39,6 +39,10 @@ htmlcov/
 *.cover
 .hypothesis/
 
+# Linter/type checker caches
+.mypy_cache/
+.ruff_cache/
+
 # Build artifacts
 build/
 dist/
@@ -50,3 +54,10 @@ IMPLEMENTATION_STATUS.md
 
 # Firebase debug logs
 firebase-debug.log
+
+# Legacy/obsolete code (pre-restructure)
+project/
+requirements.txt
+
+# Unknown binaries
+code
