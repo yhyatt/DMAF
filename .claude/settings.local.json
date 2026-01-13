@@ -25,12 +25,22 @@
     ]
   },
   "hooks": {
-    "UserPromptSubmit": [
+    "PermissionRequest": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/dotfiles/bin/claude-input-notify"
+            "command": "/home/yonatan/dotfiles/bin/wsl-notify 'Claude Code' 'Permission needed - check your terminal!'"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/yonatan/dotfiles/bin/wsl-notify 'Claude Code' 'Task complete - ready for input!'"
           }
         ]
       }
