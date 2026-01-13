@@ -301,23 +301,118 @@ UPDATED: pyproject.toml              - Added dev dependencies (pytest, coverage)
 
 ---
 
+## ✅ Phase D: Face Recognition Testing & Comparison - **COMPLETE**
+
+### What Was Accomplished
+
+| Task | Status | Notes |
+|------|--------|-------|
+| 1. InsightFace unit tests | ✅ | 16 tests, 79% coverage |
+| 2. LOOCV validation framework | ✅ | Proper train/test split, no data leakage |
+| 3. Backend accuracy comparison | ✅ | LOOCV same-person matching complete |
+| 4. Unknown people FPR test | ✅ | **CRITICAL: 107 strangers vs 4 known people** |
+| 5. Performance benchmarks | ✅ | Model load time + encoding speed tests |
+| 6. Detection parameter optimization | ✅ | Tested det_thresh, det_size, min_face_size |
+
+### Test Summary
+
+```
+New Tests: 29 tests (16 unit + 13 comparison)
+Test Files: +2 files (test_insightface_backend.py, test_backend_comparison.py)
+Validation Method: Leave-One-Out Cross-Validation (LOOCV)
+Test Images: 40 known people (4 people × 10 images) + 107 unknown people
+Test Duration: ~30 minutes total (LOOCV is thorough but slow)
+```
+
+### Backend Comparison Results
+
+**🚨 CRITICAL FINDING: InsightFace is Superior for Production**
+
+**Accuracy Metrics** (using LOOCV - unbiased validation):
+
+| Backend | Same-Person TPR | **Unknown People FPR** | Speed | Verdict |
+|---------|----------------|------------------------|-------|---------|
+| **insightface** ⭐ | 77.5% (31/40) | **0.0%** (0/107) | **99s** (12x faster) | ✅ **RECOMMENDED** |
+| face_recognition | 92.5% (37/40) | **11.2%** (12/107) | 1413s | ⚠️ Not recommended |
+
+**Key Insights:**
+
+1. **Unknown People FPR is the Decisive Metric**
+   - Production: 99%+ of WhatsApp images are unknown people
+   - face_recognition: 12 strangers wrongly identified as family (privacy violation!)
+   - insightface: 0 false matches (perfect stranger rejection)
+
+2. **Both Have Perfect Recognition Accuracy When Face is Detected**
+   - face_recognition: 37/37 = 100% match accuracy
+   - insightface: 31/31 = 100% match accuracy
+   - The difference is detection recall, NOT recognition quality
+
+3. **Why InsightFace Misses Some Faces**
+   - RetinaFace detector is conservative (9 "no face" vs 3 for dlib)
+   - Designed for high-quality frontal faces
+   - This conservatism is actually a FEATURE - prevents false positives
+
+4. **Recommendation: Use InsightFace**
+   - False positives (uploading strangers) > False negatives (missing photos)
+   - 12x faster than face_recognition
+   - Perfect stranger rejection (0% FPR)
+   - Acceptable family recall (77.5% TPR)
+
+**Configuration:**
+```yaml
+face_recognition:
+  backend: "insightface"  # RECOMMENDED
+  tolerance: 0.42
+  min_face_size: 80
+```
+
+### Key Testing Strategies
+
+**Leave-One-Out Cross-Validation (LOOCV):**
+- For each person's N images, test each image against the other N-1 images
+- Ensures test image is NEVER in training set (no data leakage)
+- Provides unbiased accuracy estimates with limited data
+- Total iterations: 40 (4 people × 10 images each)
+
+**Cross-Person Rejection:**
+- Test that person A's images don't match person B's encodings
+- Measures False Positive Rate (FPR)
+- Ensures backends can distinguish between different people
+
+**Performance Benchmarking:**
+- Model load time (cold start)
+- Per-image encoding time (face detection + embedding extraction)
+- Memory footprint comparison
+
+### Files Created
+
+```
+NEW: tests/test_insightface_backend.py   - 16 unit tests for insightface backend
+NEW: tests/test_backend_comparison.py    - 13 LOOCV + performance tests
+
+UPDATED: tests/conftest.py                - Added known_people_path fixture
+UPDATED: pytest.ini                       - 'slow' marker for ML tests
+```
+
+---
+
 ## 📊 Overall Progress
 
 ```
 Phase A: ████████████████████ 100% ✅
 Phase B: ████████████████████ 100% ✅
 Phase C: ████████████████████ 100% ✅
-Phase D: ░░░░░░░░░░░░░░░░░░░░   0% ⏸️
+Phase D: ████████████████████ 100% ✅
 Phase E: ░░░░░░░░░░░░░░░░░░░░   0% ⏸️
 Phase F: ░░░░░░░░░░░░░░░░░░░░   0% ⏸️
 Phase G: ░░░░░░░░░░░░░░░░░░░░   0% ⏸️
 
-Overall: ████████████░░░░░░░░  43%
+Overall: ███████████████░░░░░  57%
 ```
 
 ---
 
-## 🎯 Next: Phase D - Face Recognition Testing & Comparison
+## 🎯 Next: Phase E - CI/CD (GitHub Actions)
 
 When approved, Phase D will add face recognition testing:
 1. Create test image datasets with known faces

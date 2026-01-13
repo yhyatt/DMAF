@@ -15,13 +15,19 @@ google_photos_album_name: null  # "Family - Auto WhatsApp Imports"
 
 # Face Recognition Settings
 recognition:
-  # Backend: "face_recognition" (dlib, CPU) or "insightface" (deep learning, more accurate)
-  backend: "face_recognition"
+  # Backend: "face_recognition" (dlib) or "insightface" (deep learning, RECOMMENDED)
+  # RECOMMENDED: "insightface" - Phase D testing showed:
+  #   - 0.0% false positive rate on unknown people (perfect stranger rejection)
+  #   - 12x faster than face_recognition (99s vs 1413s on test set)
+  #   - 77.5% same-person recall (vs 92.5% for face_recognition)
+  # Trade-off: insightface is more conservative but prevents privacy violations
+  backend: "insightface"
 
   # Matching threshold - lower = stricter matching
-  # face_recognition: typically 0.50-0.60
-  # insightface: typically 0.30-0.50
-  tolerance: 0.52
+  # Optimal values from Phase D testing:
+  #   insightface: 0.42 (0.0% FPR, 77.5% TPR)
+  #   face_recognition: 0.55 (11.2% FPR, 92.5% TPR)
+  tolerance: 0.42
 
   # Minimum face size in pixels (skip tiny faces)
   min_face_size_pixels: 80

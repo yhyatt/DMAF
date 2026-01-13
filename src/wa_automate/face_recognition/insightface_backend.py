@@ -25,9 +25,12 @@ def _get_app() -> FaceAnalysis:
         with _app_lock:
             # Double-check locking pattern
             if _app_instance is None:
-                app = FaceAnalysis(name="buffalo_l")  # balanced accuracy/speed
+                app = FaceAnalysis(name="buffalo_l")  # balanced accuracy/speed (ResNet-50, 99.7% LFW)
                 # ctx_id=-1 = CPU; set 0 if you configured CUDA in WSL
-                app.prepare(ctx_id=-1, det_size=(640, 640))
+                # det_thresh=0.4 lowers detection confidence slightly for better recall
+                # (default 0.5 was missing some faces, but 0.35 was too permissive)
+                # Keep det_size=(640, 640) - larger sizes need proportionally larger min_face_size
+                app.prepare(ctx_id=-1, det_size=(640, 640), det_thresh=0.4)
                 _app_instance = app
 
     return _app_instance
