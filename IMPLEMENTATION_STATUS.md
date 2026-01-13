@@ -396,6 +396,139 @@ UPDATED: pytest.ini                       - 'slow' marker for ML tests
 
 ---
 
+## ✅ Augmentation Improvements - **COMPLETE**
+
+### What Was Accomplished
+
+Built on Phase D results to improve InsightFace TPR while maintaining perfect FPR.
+
+| Task | Status | Result |
+|------|--------|--------|
+| 1. Create augmentation utilities | ✅ | Conservative strategy implemented |
+| 2. Test 6 augmentation strategies | ✅ | All tested via LOOCV |
+| 3. Measure TPR impact | ✅ | +5.0% improvement (77.5% → 82.5%) |
+| 4. Verify FPR maintained | ✅ | 0.0% FPR preserved (0/107 strangers) |
+| 5. Implement in production code | ✅ | Default for insightface backend |
+| 6. Create debug tools | ✅ | Missed detection analysis script |
+
+### Augmentation Strategy Comparison
+
+**All 6 strategies tested with LOOCV (40 images, 4 people):**
+
+| Strategy | TPR | vs Baseline | FPR (107 unknowns) | Training Mult |
+|----------|-----|-------------|-------------------|---------------|
+| **conservative** ⭐ | **82.5%** | **+5.0%** | **0.0%** | 4x |
+| aggressive | 82.5% | +5.0% | — | 9x (same TPR, higher cost) |
+| flip_only | 80.0% | +2.5% | — | 2x |
+| brightness | 80.0% | +2.5% | — | 3x |
+| rotation | 80.0% | +2.5% | — | 3x |
+| none (baseline) | 77.5% | — | 0.0% | 1x |
+
+### Conservative Augmentation (Winner)
+
+**Strategy:**
+- Horizontal flip (mirror image)
+- Brightness 0.8x (slightly darker)
+- Brightness 1.2x (slightly brighter)
+
+**Results:**
+- **82.5% TPR** (33/40 correct, 7 no-face failures)
+- **0.0% FPR** (0/107 false matches on unknown people)
+- **+5.0% improvement** over baseline (31/40 → 33/40)
+- **22% reduction** in no-face failures (9 → 7)
+
+**Why it works:**
+- Flip: Handles different face angles/profiles
+- Brightness ±20%: Realistic lighting variations
+- Not aggressive: Maintains image quality
+- 4x training data is the sweet spot
+
+**Gap to face_recognition narrowed:**
+- Phase D: 77.5% vs 92.5% (15% gap)
+- **Now: 82.5% vs 92.5% (10% gap)**
+- Still maintains 0.0% FPR (vs 11.2% for face_recognition)
+
+### Production Impact
+
+**Expected improvement in production:**
+- Upload **2 more family photos** per 40 images (5% increase)
+- **Zero strangers uploaded** (privacy preserved)
+- More robust to lighting and angle variations
+
+**Configuration (now default):**
+```yaml
+recognition:
+  backend: "insightface"
+  tolerance: 0.42
+  min_face_size_pixels: 80
+  # Augmentation enabled by default in insightface backend
+```
+
+### Debug Tools
+
+**Missed Detection Analysis:**
+```bash
+python scripts/debug_missed_detections.py
+```
+
+Analyzes the 7 no-face failures (17.5%):
+- Lists failed images by person
+- Provides debugging suggestions
+- Shows per-image detection status
+
+**Example output:**
+```
+Person 3/4: Lenny (10 images)
+  ✓ IMG-20250914-WA0013.jpg
+  ✗ PXL_20250920_120041690.jpg - NO FACE DETECTED
+  ✗ PXL_20250918_165519224.jpg - NO FACE DETECTED
+  ...
+
+Lenny:
+  Total: 10 images
+  Failures: 5 (50.0%)
+  Failed images:
+    - PXL_20250920_120041690.jpg
+    - PXL_20250918_165519224.jpg
+```
+
+### Files Created/Modified
+
+```
+NEW: src/wa_automate/face_recognition/augmentation.py  - Conservative augmentation
+NEW: scripts/debug_missed_detections.py                 - Debug tool for failures
+NEW: tests/augmentation_utils.py                        - Test augmentation strategies
+NEW: tests/test_augmentation_comparison.py              - 29 augmentation tests
+
+UPDATED: src/wa_automate/face_recognition/insightface_backend.py  - Uses augmentation by default
+UPDATED: src/wa_automate/face_recognition/factory.py              - enable_augmentation parameter
+UPDATED: config.example.yaml                                       - Recommends insightface
+```
+
+### Key Insights
+
+1. **Diminishing returns on training data**
+   - 4x data (conservative): 82.5% TPR
+   - 9x data (aggressive): 82.5% TPR (same!)
+   - Quality > quantity: Conservative is optimal
+
+2. **Combined augmentations are additive**
+   - flip_only: +2.5%
+   - brightness: +2.5%
+   - flip + brightness: +5.0% ✓ Additive benefit!
+
+3. **Augmentation doesn't hurt FPR**
+   - Baseline: 0.0% FPR
+   - Conservative: 0.0% FPR
+   - More training data → better discrimination
+
+4. **InsightFace + augmentation is production-ready**
+   - 82.5% TPR, 0.0% FPR
+   - 12x faster than face_recognition
+   - Privacy-preserving (no stranger uploads)
+
+---
+
 ## 📊 Overall Progress
 
 ```
