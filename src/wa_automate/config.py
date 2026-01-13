@@ -50,9 +50,25 @@ class DedupSettings(BaseModel):
         default="sha256",
         description="Hash method for deduplication",
     )
+    backend: Literal["sqlite", "firestore"] = Field(
+        default="sqlite",
+        description="Database backend: 'sqlite' (local) or 'firestore' (cloud)",
+    )
+
+    # SQLite settings (used when backend="sqlite")
     db_path: Path = Field(
         default=Path("./state.sqlite3"),
         description="Path to SQLite database for tracking processed files",
+    )
+
+    # Firestore settings (used when backend="firestore")
+    firestore_project: str | None = Field(
+        default=None,
+        description="GCP project ID for Firestore (required when backend=firestore)",
+    )
+    firestore_collection: str = Field(
+        default="dmaf_files",
+        description="Firestore collection name",
     )
 
     @field_validator("db_path", mode="before")
@@ -62,6 +78,15 @@ class DedupSettings(BaseModel):
         if isinstance(v, str):
             return Path(v)
         return v
+
+    @model_validator(mode="after")
+    def validate_backend_config(self):
+        """Validate that required fields are set for the chosen backend."""
+        if self.backend == "firestore" and not self.firestore_project:
+            raise ValueError(
+                "firestore_project is required when dedup.backend='firestore'"
+            )
+        return self
 
 
 class Settings(BaseSettings):

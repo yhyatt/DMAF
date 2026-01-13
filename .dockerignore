@@ -1,0 +1,64 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Version control
+.git/
+.gitignore
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Data and state (exclude from image)
+data/
+*.sqlite3
+*.db
+
+# Secrets (never include in image)
+client_secret.json
+token.json
+credentials.json
+*.pem
+*.key
+
+# Config (use mounted config in cloud)
+config.yaml
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific
+tests/
+scripts/
+project/
+.claude/

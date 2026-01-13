@@ -15,10 +15,10 @@ from pathlib import Path
 from PIL import Image
 
 from wa_automate.config import Settings
-from wa_automate.database import get_conn
+from wa_automate.database import get_database
 from wa_automate.face_recognition import best_match, load_known_faces
 from wa_automate.google_photos import create_media_item, ensure_album, get_creds, upload_bytes
-from wa_automate.watcher import NewImageHandler, run_watch
+from wa_automate.watcher import NewImageHandler, run_watch, scan_and_process_once
 
 
 def build_processor(known_root: Path, backend: str, tolerance: float, min_face_size: int):
@@ -62,6 +62,11 @@ def main(argv: list[str] | None = None) -> int:
         default=Path("config.yaml"),
         help="Path to configuration file (default: config.yaml)",
     )
+    parser.add_argument(
+        "--scan-once",
+        action="store_true",
+        help="Scan directories once, process new files, then exit (for batch/cron/cloud use)",
+    )
     args = parser.parse_args(argv)
 
     # Load and validate configuration
@@ -81,7 +86,22 @@ def main(argv: list[str] | None = None) -> int:
     )
     logger = logging.getLogger(__name__)
 
-    conn = get_conn(str(settings.dedup.db_path))
+    # Create database connection with appropriate backend
+    if settings.dedup.backend == "sqlite":
+        conn = get_database("sqlite", db_path=str(settings.dedup.db_path))
+        logger.info(f"Using SQLite database: {settings.dedup.db_path}")
+    elif settings.dedup.backend == "firestore":
+        conn = get_database(
+            "firestore",
+            project_id=settings.dedup.firestore_project,
+            collection=settings.dedup.firestore_collection,
+        )
+        logger.info(
+            f"Using Firestore: project={settings.dedup.firestore_project}, "
+            f"collection={settings.dedup.firestore_collection}"
+        )
+    else:
+        raise ValueError(f"Unknown database backend: {settings.dedup.backend}")
 
     logger.info(f"Using face recognition backend: {settings.recognition.backend}")
 
@@ -114,9 +134,24 @@ def main(argv: list[str] | None = None) -> int:
             logger.info(f"Uploaded -> MediaItem {_id}")
 
     handler = Uploader(process_fn, conn, settings)
-    run_watch([str(d) for d in settings.watch_dirs], handler)
 
-    return 0
+    if args.scan_once:
+        # Batch mode: scan once and exit
+        logger.info("Running in batch mode (scan-once)")
+        result = scan_and_process_once([str(d) for d in settings.watch_dirs], handler)
+
+        logger.info(
+            f"Batch scan complete: {result.new_files} new, "
+            f"{result.processed} processed, {result.matched} matched, "
+            f"{result.uploaded} uploaded, {result.errors} errors"
+        )
+
+        return 0 if result.success else 1
+    else:
+        # Watcher mode: continuous monitoring
+        logger.info("Running in watcher mode (continuous)")
+        run_watch([str(d) for d in settings.watch_dirs], handler)
+        return 0
 
 
 if __name__ == "__main__":
