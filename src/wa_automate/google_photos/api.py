@@ -11,8 +11,8 @@ from wa_automate.utils.retry import RetryConfig, with_retry
 
 SCOPES = [
     "https://www.googleapis.com/auth/photoslibrary.appendonly",
-    # "https://www.googleapis.com/auth/photoslibrary.readonly",  # enable if you want to lookup albums
-    # "https://www.googleapis.com/auth/photoslibrary"            # full control - avoid unless needed
+    # "https://www.googleapis.com/auth/photoslibrary.readonly",  # albums lookup
+    # "https://www.googleapis.com/auth/photoslibrary"  # full control
 ]
 
 

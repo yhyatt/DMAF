@@ -202,8 +202,11 @@ class TestBackendAccuracy:
             for img_idx, test_img_path in enumerate(
                 test_images[:3], 1
             ):  # Limit to 3 images per person for speed
+                person_idx = test_person_idx
+                person_count = len(person_dirs)
                 print(
-                    f"Person {test_person_idx}/{len(person_dirs)}: {test_person_name} - Image {img_idx}/3"
+                    f"Person {person_idx}/{person_count}: "
+                    f"{test_person_name} - Image {img_idx}/3"
                 )
                 test_img = Image.open(test_img_path).convert("RGB")
                 test_img_np = np.array(test_img)
@@ -347,7 +350,8 @@ class TestBackendAccuracy:
             # Warn if FPR > 5% (acceptable but not ideal)
             if fpr > 0.05:
                 print(
-                    f"\n⚠️  WARNING: {backend_name} FPR {fpr:.1%} exceeds 5% - consider insightface for better precision"
+                    f"\n⚠️  WARNING: {backend_name} FPR {fpr:.1%} exceeds 5% - "
+                    f"consider insightface for better precision"
                 )
 
 
