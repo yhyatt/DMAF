@@ -19,7 +19,7 @@ SCOPES = [
 def get_creds(
     token_path: str = "token.json", client_secret_path: str = "client_secret.json"
 ) -> Credentials:
-    creds = None
+    creds: Credentials | None = None
     if pathlib.Path(token_path).exists():
         creds = Credentials.from_authorized_user_file(token_path, SCOPES)
     if not creds or not creds.valid:
@@ -45,16 +45,22 @@ def ensure_album(creds: Credentials, album_name: str | None) -> str | None:
         "https://photoslibrary.googleapis.com/v1/albums?pageSize=50", headers=headers, timeout=30
     )
     if r.status_code == 200:
-        for album in r.json().get("albums", []):
+        albums_list = r.json().get("albums", [])
+        for album in albums_list:
             if album.get("title") == album_name:
-                return album.get("id")
+                album_id = album.get("id")
+                return album_id if isinstance(album_id, str) else None
     # Create album
-    body = {"album": {"title": album_name}}
+    body_dict = {"album": {"title": album_name}}
     r = requests.post(
-        "https://photoslibrary.googleapis.com/v1/albums", headers=headers, json=body, timeout=30
+        "https://photoslibrary.googleapis.com/v1/albums",
+        headers=headers,
+        json=body_dict,
+        timeout=30,
     )
     r.raise_for_status()
-    return r.json()["id"]
+    result = r.json().get("id")
+    return result if isinstance(result, str) else None
 
 
 @with_retry(RetryConfig(max_retries=3, base_delay=2.0))
@@ -110,10 +116,12 @@ def create_media_item(
         RuntimeError: If Google Photos API returns an error status
     """
     headers = {"Authorization": f"Bearer {creds.token}", "Content-Type": "application/json"}
-    new_item = {"simpleMediaItem": {"uploadToken": upload_token}}
+    new_item: dict[str, str | dict[str, str]] = {
+        "simpleMediaItem": {"uploadToken": upload_token}
+    }
     if description:
         new_item["description"] = description
-    body = {"newMediaItems": [new_item]}
+    body: dict[str, str | list[dict[str, str | dict[str, str]]]] = {"newMediaItems": [new_item]}
     if album_id:
         body["albumId"] = album_id
     r = requests.post(

@@ -44,13 +44,15 @@ class Database:
                 check_same_thread=False,
                 timeout=30.0,  # Wait up to 30s if database is locked
             )
-        return self._local.conn
+        conn: sqlite3.Connection = self._local.conn
+        return conn
 
     def seen(self, path: str) -> bool:
         """Check if a file path has been processed before."""
         conn = self._get_conn()
         cur = conn.execute("SELECT 1 FROM files WHERE path=?", (path,))
-        return cur.fetchone() is not None
+        result = cur.fetchone()
+        return result is not None
 
     def add_file(self, path: str, sha256: str | None, matched: int, uploaded: int):
         """Add a new file record to the database."""
@@ -111,7 +113,7 @@ class FirestoreDatabase:
         """Check if a file path has been processed before."""
         doc_id = self._hash_path(path)
         doc = self.collection.document(doc_id).get()
-        return doc.exists
+        return bool(doc.exists)
 
     def add_file(self, path: str, sha256: str | None, matched: int, uploaded: int):
         """Add a new file record to Firestore."""

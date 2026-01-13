@@ -10,7 +10,7 @@ from PIL import Image, ImageEnhance
 
 def horizontal_flip(img: Image.Image) -> Image.Image:
     """Flip image horizontally (mirror)."""
-    return img.transpose(Image.FLIP_LEFT_RIGHT)
+    return img.transpose(Image.Transpose.FLIP_LEFT_RIGHT)  # type: ignore[attr-defined]
 
 
 def adjust_brightness(img: Image.Image, factor: float) -> Image.Image:
