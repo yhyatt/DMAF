@@ -3,16 +3,27 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "wa-automate"
+name = "dmaf"
 version = "0.1.0"
-description = "Automated WhatsApp media backup with face recognition filtering"
+description = "Don't Miss A Face — Automated WhatsApp media backup with intelligent face recognition filtering"
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.10"
 authors = [
     {name = "Yonatan"}
 ]
-keywords = ["whatsapp", "google-photos", "face-recognition", "automation"]
+keywords = [
+    "face-recognition",
+    "whatsapp", 
+    "google-photos",
+    "photo-backup",
+    "automation",
+    "insightface",
+    "dlib",
+    "family-photos",
+    "media-management",
+    "privacy",
+]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: End Users/Desktop",
@@ -23,6 +34,8 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Topic :: Multimedia :: Graphics",
+    "Topic :: Scientific/Engineering :: Image Recognition",
+    "Topic :: Home Automation",
 ]
 
 dependencies = [
@@ -48,7 +61,7 @@ insightface = [
     "onnxruntime>=1.15.0",
 ]
 all = [
-    "wa-automate[face-recognition,insightface]",
+    "dmaf[face-recognition,insightface]",
 ]
 dev = [
     "pytest>=7.4.0",
@@ -62,7 +75,13 @@ dev = [
 ]
 
 [project.scripts]
-wa-automate = "wa_automate.__main__:main"
+dmaf = "wa_automate.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/yonatan/dmaf"
+Documentation = "https://github.com/yonatan/dmaf#readme"
+Repository = "https://github.com/yonatan/dmaf.git"
+Issues = "https://github.com/yonatan/dmaf/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/wa_automate"]
