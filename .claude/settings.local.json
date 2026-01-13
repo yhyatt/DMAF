@@ -21,7 +21,17 @@
       "Bash(.venv/bin/pytest tests/test_factory.py -v)",
       "Bash(.venv/bin/pytest tests/ -v --cov=wa_automate --cov-report=term-missing:skip-covered)",
       "Bash(.venv/bin/pytest tests/test_google_photos_api.py -v)",
-      "Bash(.venv/bin/pytest:*)"
+      "Bash(.venv/bin/pytest:*)",
+      "Bash(for dir in data/known_people/*/:*)",
+      "Bash(done)",
+      "Bash(tee:*)",
+      "Bash(find:*)",
+      "Bash(chmod:*)",
+      "Bash(/tmp/analyze_augmentation_results.sh:*)",
+      "Bash(git ls-tree:*)",
+      "Bash(ruff check:*)",
+      "Bash(black:*)",
+      "Bash(mypy:*)"
     ]
   },
   "hooks": {
