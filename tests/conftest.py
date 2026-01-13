@@ -17,6 +17,41 @@ def temp_dir() -> Generator[Path, None, None]:
 
 
 @pytest.fixture
+def known_people_path() -> Path:
+    """
+    Path to data/known_people/ directory with real test images.
+
+    This fixture is used for integration tests that need real face recognition.
+    Returns the absolute path to the known_people directory.
+    """
+    project_root = Path(__file__).parent.parent
+    known_path = project_root / "data" / "known_people"
+
+    if not known_path.exists():
+        pytest.skip(f"Known people directory not found: {known_path}")
+
+    return known_path
+
+
+@pytest.fixture
+def unknown_people_path() -> Path:
+    """
+    Path to data/unknown_people/ directory with stranger test images.
+
+    This fixture is used for realistic FPR testing - most production images
+    are of unknown people who should NOT match any known person.
+    Returns the absolute path to the unknown_people directory.
+    """
+    project_root = Path(__file__).parent.parent
+    unknown_path = project_root / "data" / "unknown_people"
+
+    if not unknown_path.exists():
+        pytest.skip(f"Unknown people directory not found: {unknown_path}")
+
+    return unknown_path
+
+
+@pytest.fixture
 def sample_config_dict() -> dict:
     """Sample configuration dictionary for testing."""
     return {
