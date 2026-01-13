@@ -4,6 +4,10 @@ from pathlib import Path
 from unittest.mock import patch
 
 import numpy as np
+import pytest
+
+# Skip all tests in this module if face_recognition is not installed
+pytest.importorskip("face_recognition")
 
 from wa_automate.face_recognition import dlib_backend
 
