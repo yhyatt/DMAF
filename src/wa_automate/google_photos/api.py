@@ -116,9 +116,7 @@ def create_media_item(
         RuntimeError: If Google Photos API returns an error status
     """
     headers = {"Authorization": f"Bearer {creds.token}", "Content-Type": "application/json"}
-    new_item: dict[str, str | dict[str, str]] = {
-        "simpleMediaItem": {"uploadToken": upload_token}
-    }
+    new_item: dict[str, str | dict[str, str]] = {"simpleMediaItem": {"uploadToken": upload_token}}
     if description:
         new_item["description"] = description
     body: dict[str, str | list[dict[str, str | dict[str, str]]]] = {"newMediaItems": [new_item]}
