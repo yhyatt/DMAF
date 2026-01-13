@@ -89,7 +89,7 @@ class TestAugmentationUtilities:
         assert results[0][0] == "original"
 
         # All should be valid numpy arrays
-        for name, img_array in results:
+        for _name, img_array in results:
             assert isinstance(img_array, np.ndarray)
             assert img_array.shape[2] == 3  # RGB
             assert img_array.dtype == np.uint8
@@ -169,7 +169,7 @@ class TestAugmentationImpact:
                     results["training_samples"] += len(augmented_imgs)
 
                     # Extract face encodings from each version
-                    for aug_name, img_array in augmented_imgs:
+                    for _aug_name, img_array in augmented_imgs:
                         # Use factory to extract encodings
                         min_face_size = 80
                         tolerance = 0.42
@@ -284,7 +284,7 @@ class TestAugmentationImpact:
                 total_training_samples += len(augmented_imgs)
 
                 # Extract encodings
-                for aug_name, img_array in augmented_imgs:
+                for _aug_name, img_array in augmented_imgs:
                     from wa_automate.face_recognition.insightface_backend import (
                         _embed_faces,
                         _get_app,
@@ -375,7 +375,8 @@ class TestAugmentationComparison:
             print(f"  Description: {description}")
             print(f"  Augmentations: {num_augmentations}")
             print(
-                f"  Training multiplier: {num_augmentations + 1}x (original + {num_augmentations} aug)"
+                f"  Training multiplier: {num_augmentations + 1}x "
+                f"(original + {num_augmentations} aug)"
             )
 
         print("\n" + "=" * 80)

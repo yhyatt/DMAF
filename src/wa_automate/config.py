@@ -83,9 +83,7 @@ class DedupSettings(BaseModel):
     def validate_backend_config(self):
         """Validate that required fields are set for the chosen backend."""
         if self.backend == "firestore" and not self.firestore_project:
-            raise ValueError(
-                "firestore_project is required when dedup.backend='firestore'"
-            )
+            raise ValueError("firestore_project is required when dedup.backend='firestore'")
         return self
 
 
