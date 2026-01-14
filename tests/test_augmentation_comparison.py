@@ -10,6 +10,7 @@ import numpy as np
 import pytest
 from PIL import Image
 
+from dmaf.face_recognition import factory
 from tests.augmentation_utils import (
     AUGMENTATION_STRATEGIES,
     adjust_brightness,
@@ -18,7 +19,6 @@ from tests.augmentation_utils import (
     horizontal_flip,
     rotate_image,
 )
-from dmaf.face_recognition import factory
 
 
 class TestAugmentationUtilities:

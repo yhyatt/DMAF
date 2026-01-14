@@ -24,9 +24,7 @@ class TestGetBackend:
 
     def test_get_insightface_backend(self):
         """Test loading insightface backend."""
-        with patch.dict(
-            "sys.modules", {"dmaf.face_recognition.insightface_backend": MagicMock()}
-        ):
+        with patch.dict("sys.modules", {"dmaf.face_recognition.insightface_backend": MagicMock()}):
             backend = factory._get_backend("insightface")
             assert backend is not None
             assert "insightface" in factory._backend_cache
