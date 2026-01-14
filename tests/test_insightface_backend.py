@@ -10,7 +10,7 @@ import pytest
 # Skip all tests in this module if insightface is not installed
 pytest.importorskip("insightface")
 
-from wa_automate.face_recognition import insightface_backend
+from dmaf.face_recognition import insightface_backend
 
 
 class TestGetApp:
@@ -20,7 +20,7 @@ class TestGetApp:
         """Reset singleton before each test."""
         insightface_backend._app_instance = None
 
-    @patch("wa_automate.face_recognition.insightface_backend.FaceAnalysis")
+    @patch("dmaf.face_recognition.insightface_backend.FaceAnalysis")
     def test_singleton_pattern(self, mock_face_analysis_class):
         """Test that _get_app() returns same instance on multiple calls."""
         mock_app = Mock()
@@ -37,7 +37,7 @@ class TestGetApp:
         mock_face_analysis_class.assert_called_once_with(name="buffalo_l")
         mock_app.prepare.assert_called_once_with(ctx_id=-1, det_size=(640, 640), det_thresh=0.4)
 
-    @patch("wa_automate.face_recognition.insightface_backend.FaceAnalysis")
+    @patch("dmaf.face_recognition.insightface_backend.FaceAnalysis")
     def test_thread_safety(self, mock_face_analysis_class):
         """Test that singleton is thread-safe."""
         mock_app = Mock()
@@ -127,9 +127,9 @@ class TestLoadKnownFaces:
         """Reset singleton before each test."""
         insightface_backend._app_instance = None
 
-    @patch("wa_automate.face_recognition.insightface_backend._get_app")
-    @patch("wa_automate.face_recognition.insightface_backend._embed_faces")
-    @patch("wa_automate.face_recognition.insightface_backend._img_to_np")
+    @patch("dmaf.face_recognition.insightface_backend._get_app")
+    @patch("dmaf.face_recognition.insightface_backend._embed_faces")
+    @patch("dmaf.face_recognition.insightface_backend._img_to_np")
     def test_load_empty_directory(self, mock_img_to_np, mock_embed, mock_get_app, temp_dir: Path):
         """Test loading from empty directory."""
         known_dir = temp_dir / "known_people"
@@ -144,9 +144,9 @@ class TestLoadKnownFaces:
         assert encodings_dict == {}
         assert people_list == []
 
-    @patch("wa_automate.face_recognition.insightface_backend._get_app")
-    @patch("wa_automate.face_recognition.insightface_backend._embed_faces")
-    @patch("wa_automate.face_recognition.insightface_backend.Image")
+    @patch("dmaf.face_recognition.insightface_backend._get_app")
+    @patch("dmaf.face_recognition.insightface_backend._embed_faces")
+    @patch("dmaf.face_recognition.insightface_backend.Image")
     def test_load_with_person(self, mock_image_class, mock_embed, mock_get_app, temp_dir: Path):
         """Test loading faces for one person."""
         # Setup directory structure
@@ -180,9 +180,9 @@ class TestLoadKnownFaces:
         mock_embed.assert_called_once()
         assert mock_embed.call_args[0][2] == 80
 
-    @patch("wa_automate.face_recognition.insightface_backend._get_app")
-    @patch("wa_automate.face_recognition.insightface_backend._embed_faces")
-    @patch("wa_automate.face_recognition.insightface_backend.Image")
+    @patch("dmaf.face_recognition.insightface_backend._get_app")
+    @patch("dmaf.face_recognition.insightface_backend._embed_faces")
+    @patch("dmaf.face_recognition.insightface_backend.Image")
     def test_skip_zone_identifier(self, mock_image_class, mock_embed, mock_get_app, temp_dir: Path):
         """Test that Zone.Identifier files are skipped."""
         known_dir = temp_dir / "known_people"
@@ -209,9 +209,9 @@ class TestLoadKnownFaces:
         # Should only load the image, not the Zone.Identifier file
         assert mock_image_class.open.call_count == 1
 
-    @patch("wa_automate.face_recognition.insightface_backend._get_app")
-    @patch("wa_automate.face_recognition.insightface_backend._embed_faces")
-    @patch("wa_automate.face_recognition.insightface_backend._img_to_np")
+    @patch("dmaf.face_recognition.insightface_backend._get_app")
+    @patch("dmaf.face_recognition.insightface_backend._embed_faces")
+    @patch("dmaf.face_recognition.insightface_backend._img_to_np")
     def test_multiple_people(self, mock_img_to_np, mock_embed, mock_get_app, temp_dir: Path):
         """Test loading faces for multiple people."""
         known_dir = temp_dir / "known_people"
@@ -250,8 +250,8 @@ class TestBestMatch:
         """Reset singleton before each test."""
         insightface_backend._app_instance = None
 
-    @patch("wa_automate.face_recognition.insightface_backend._get_app")
-    @patch("wa_automate.face_recognition.insightface_backend._embed_faces")
+    @patch("dmaf.face_recognition.insightface_backend._get_app")
+    @patch("dmaf.face_recognition.insightface_backend._embed_faces")
     def test_no_faces_detected(self, mock_embed, mock_get_app):
         """Test matching when no faces detected in image."""
         known = {"alice": [np.random.rand(512).astype(np.float32)]}
@@ -265,9 +265,9 @@ class TestBestMatch:
         assert matched is False
         assert names == []
 
-    @patch("wa_automate.face_recognition.insightface_backend._get_app")
-    @patch("wa_automate.face_recognition.insightface_backend._embed_faces")
-    @patch("wa_automate.face_recognition.insightface_backend._cosine_sim")
+    @patch("dmaf.face_recognition.insightface_backend._get_app")
+    @patch("dmaf.face_recognition.insightface_backend._embed_faces")
+    @patch("dmaf.face_recognition.insightface_backend._cosine_sim")
     def test_match_found(self, mock_cosine_sim, mock_embed, mock_get_app):
         """Test successful face match using cosine similarity."""
         # Create normalized known encoding
@@ -295,9 +295,9 @@ class TestBestMatch:
         # Verify cosine_sim was called
         mock_cosine_sim.assert_called()
 
-    @patch("wa_automate.face_recognition.insightface_backend._get_app")
-    @patch("wa_automate.face_recognition.insightface_backend._embed_faces")
-    @patch("wa_automate.face_recognition.insightface_backend._cosine_sim")
+    @patch("dmaf.face_recognition.insightface_backend._get_app")
+    @patch("dmaf.face_recognition.insightface_backend._embed_faces")
+    @patch("dmaf.face_recognition.insightface_backend._cosine_sim")
     def test_no_match(self, mock_cosine_sim, mock_embed, mock_get_app):
         """Test when face doesn't match any known person."""
         known = {"alice": [np.random.rand(512).astype(np.float32)]}
@@ -314,9 +314,9 @@ class TestBestMatch:
         assert matched is False
         assert names == []
 
-    @patch("wa_automate.face_recognition.insightface_backend._get_app")
-    @patch("wa_automate.face_recognition.insightface_backend._embed_faces")
-    @patch("wa_automate.face_recognition.insightface_backend._cosine_sim")
+    @patch("dmaf.face_recognition.insightface_backend._get_app")
+    @patch("dmaf.face_recognition.insightface_backend._embed_faces")
+    @patch("dmaf.face_recognition.insightface_backend._cosine_sim")
     def test_tolerance_interpretation(self, mock_cosine_sim, mock_embed, mock_get_app):
         """Test that tolerance is interpreted as (1.0 - tolerance) threshold."""
         known = {"alice": [np.random.rand(512).astype(np.float32)]}
@@ -340,9 +340,9 @@ class TestBestMatch:
 
         assert matched is False
 
-    @patch("wa_automate.face_recognition.insightface_backend._get_app")
-    @patch("wa_automate.face_recognition.insightface_backend._embed_faces")
-    @patch("wa_automate.face_recognition.insightface_backend._cosine_sim")
+    @patch("dmaf.face_recognition.insightface_backend._get_app")
+    @patch("dmaf.face_recognition.insightface_backend._embed_faces")
+    @patch("dmaf.face_recognition.insightface_backend._cosine_sim")
     def test_multiple_faces_multiple_matches(self, mock_cosine_sim, mock_embed, mock_get_app):
         """Test matching when multiple faces detected and multiple people match."""
         alice_enc = np.random.rand(512).astype(np.float32)

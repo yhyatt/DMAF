@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 import pytest
 import requests
 
-from wa_automate.utils.retry import RetryConfig, with_retry
+from dmaf.utils.retry import RetryConfig, with_retry
 
 
 class TestRetryConfig:
@@ -66,7 +66,7 @@ class TestWithRetrySuccess:
 class TestWithRetryHTTPError:
     """Test retry behavior on HTTPError."""
 
-    @patch("wa_automate.utils.retry.time.sleep")
+    @patch("dmaf.utils.retry.time.sleep")
     def test_retry_on_500_error(self, mock_sleep):
         """Test that 500 errors trigger retry."""
         # Mock response with 500 status
@@ -94,7 +94,7 @@ class TestWithRetryHTTPError:
         mock_sleep.assert_any_call(1.0)  # First retry: base_delay * 2^0
         mock_sleep.assert_any_call(2.0)  # Second retry: base_delay * 2^1
 
-    @patch("wa_automate.utils.retry.time.sleep")
+    @patch("dmaf.utils.retry.time.sleep")
     def test_retry_on_429_rate_limit(self, mock_sleep):
         """Test that 429 (rate limit) errors trigger retry."""
         mock_response = Mock()
@@ -151,7 +151,7 @@ class TestWithRetryHTTPError:
         with pytest.raises(requests.HTTPError):
             bad_request()
 
-    @patch("wa_automate.utils.retry.time.sleep")
+    @patch("dmaf.utils.retry.time.sleep")
     def test_max_retries_exceeded(self, mock_sleep):
         """Test that max retries are respected."""
         mock_response = Mock()
@@ -178,7 +178,7 @@ class TestWithRetryHTTPError:
 class TestWithRetryRequestException:
     """Test retry behavior on RequestException (network errors)."""
 
-    @patch("wa_automate.utils.retry.time.sleep")
+    @patch("dmaf.utils.retry.time.sleep")
     def test_retry_on_connection_error(self, mock_sleep):
         """Test retry on ConnectionError."""
         call_count = 0
@@ -196,7 +196,7 @@ class TestWithRetryRequestException:
         assert call_count == 2
         assert mock_sleep.call_count == 1
 
-    @patch("wa_automate.utils.retry.time.sleep")
+    @patch("dmaf.utils.retry.time.sleep")
     def test_retry_on_timeout(self, mock_sleep):
         """Test retry on Timeout."""
         call_count = 0
@@ -213,7 +213,7 @@ class TestWithRetryRequestException:
         assert result == "success"
         assert call_count == 2
 
-    @patch("wa_automate.utils.retry.time.sleep")
+    @patch("dmaf.utils.retry.time.sleep")
     def test_max_retries_on_network_error(self, mock_sleep):
         """Test that max retries are respected for network errors."""
 
@@ -231,7 +231,7 @@ class TestWithRetryRequestException:
 class TestExponentialBackoff:
     """Test exponential backoff delay calculation."""
 
-    @patch("wa_automate.utils.retry.time.sleep")
+    @patch("dmaf.utils.retry.time.sleep")
     def test_exponential_delays(self, mock_sleep):
         """Test that delays follow exponential backoff."""
         mock_response = Mock()
@@ -256,7 +256,7 @@ class TestExponentialBackoff:
         mock_sleep.assert_any_call(4.0)  # 2.0 * 2^1
         mock_sleep.assert_any_call(8.0)  # 2.0 * 2^2
 
-    @patch("wa_automate.utils.retry.time.sleep")
+    @patch("dmaf.utils.retry.time.sleep")
     def test_max_delay_cap(self, mock_sleep):
         """Test that delays are capped at max_delay."""
         mock_response = Mock()
@@ -288,8 +288,8 @@ class TestExponentialBackoff:
 class TestRetryLogging:
     """Test logging of retry attempts."""
 
-    @patch("wa_automate.utils.retry.time.sleep")
-    @patch("wa_automate.utils.retry.logging.warning")
+    @patch("dmaf.utils.retry.time.sleep")
+    @patch("dmaf.utils.retry.logging.warning")
     def test_logging_on_retry(self, mock_warning, mock_sleep):
         """Test that retry attempts are logged."""
         mock_response = Mock()
@@ -316,8 +316,8 @@ class TestRetryLogging:
         assert "Retry 1/1" in warning_msg
         assert "HTTP 503" in warning_msg
 
-    @patch("wa_automate.utils.retry.time.sleep")
-    @patch("wa_automate.utils.retry.logging.warning")
+    @patch("dmaf.utils.retry.time.sleep")
+    @patch("dmaf.utils.retry.logging.warning")
     def test_logging_network_error(self, mock_warning, mock_sleep):
         """Test logging for network errors."""
         call_count = 0
@@ -372,7 +372,7 @@ class TestRetryEdgeCases:
         result = add_numbers(10, 20, multiplier=2)
         assert result == 60
 
-    @patch("wa_automate.utils.retry.time.sleep")
+    @patch("dmaf.utils.retry.time.sleep")
     def test_preserves_function_metadata(self, mock_sleep):
         """Test that decorator preserves function metadata."""
 

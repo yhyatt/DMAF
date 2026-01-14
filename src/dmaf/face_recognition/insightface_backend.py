@@ -98,7 +98,7 @@ def load_known_faces(
 
             # Apply augmentation if enabled
             if enable_augmentation:
-                from wa_automate.face_recognition.augmentation import (
+                from dmaf.face_recognition.augmentation import (
                     apply_conservative_augmentation,
                 )
 

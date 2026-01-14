@@ -14,7 +14,7 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from wa_automate.face_recognition import factory
+from dmaf.face_recognition import factory
 
 
 class TestValidationHelpers:
@@ -364,7 +364,7 @@ class TestBackendPerformance:
         """Measure time to load/initialize each backend model."""
         # Reset singleton for insightface
         if backend_name == "insightface":
-            import wa_automate.face_recognition.insightface_backend as ib
+            import dmaf.face_recognition.insightface_backend as ib
 
             ib._app_instance = None
 
@@ -378,7 +378,7 @@ class TestBackendPerformance:
             dummy_img = np.zeros((100, 100, 3), dtype=np.uint8)
             face_recognition.face_locations(dummy_img)
         else:
-            import wa_automate.face_recognition.insightface_backend as ib
+            import dmaf.face_recognition.insightface_backend as ib
 
             _ = ib._get_app()
 

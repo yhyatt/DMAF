@@ -1,4 +1,4 @@
-# wa_automate Project Guide
+# DMAF Project Guide
 
 ## Project Overview
 WhatsApp media backup automation with face recognition filtering. Monitors WhatsApp directories, identifies photos of known people, and uploads matches to Google Photos.
@@ -34,8 +34,8 @@ Example: "Staging all changes including deletions with `git add -A` to commit Ph
 ## Project Structure
 
 ```
-wa_automate/
-├── src/wa_automate/          # Package source
+wa_automate/                  # Repository/project root
+├── src/dmaf/                 # Package source
 │   ├── google_photos/        # Google Photos API
 │   ├── face_recognition/     # Face backends (factory pattern)
 │   └── utils/                # Shared utilities
@@ -55,7 +55,7 @@ wa_automate/
 
 ### Testing & Verification
 - Virtual environment: `.venv/bin/python`
-- CLI commands: `python -m wa_automate` or `wa-automate`
+- CLI commands: `python -m dmaf` or `dmaf`
 - Config: `config.yaml` (paths relative to project root)
 
 ### Code Style
@@ -81,13 +81,13 @@ wa_automate/
 .venv/bin/pip install -e ".[all]"
 
 # Run application
-python -m wa_automate --config config.yaml
+python -m dmaf --config config.yaml
 
 # Run tests (when Phase C is complete)
-pytest tests/ -v --cov=wa_automate
+pytest tests/ -v --cov=dmaf
 
 # Check types
-mypy src/wa_automate
+mypy src/dmaf
 ```
 
 ## Dependencies

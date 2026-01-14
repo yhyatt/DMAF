@@ -6,7 +6,7 @@ Provides a unified interface to multiple face recognition libraries:
 - insightface (deep learning, more accurate)
 """
 
-from wa_automate.face_recognition.factory import best_match, load_known_faces
+from dmaf.face_recognition.factory import best_match, load_known_faces
 
 __all__ = [
     "load_known_faces",

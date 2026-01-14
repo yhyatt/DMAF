@@ -1,1 +1,1 @@
-"""Test suite for wa_automate package."""
+"""Test suite for dmaf package."""

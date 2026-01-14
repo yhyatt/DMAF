@@ -103,11 +103,11 @@ def _get_backend(backend_name: str) -> ModuleType:
 
     backend: ModuleType
     if backend_name == "face_recognition":
-        from wa_automate.face_recognition import dlib_backend
+        from dmaf.face_recognition import dlib_backend
 
         backend = dlib_backend
     elif backend_name == "insightface":
-        from wa_automate.face_recognition import insightface_backend
+        from dmaf.face_recognition import insightface_backend
 
         backend = insightface_backend
     else:

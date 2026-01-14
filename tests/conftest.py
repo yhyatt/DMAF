@@ -1,4 +1,4 @@
-"""Shared pytest fixtures for wa_automate tests."""
+"""Shared pytest fixtures for dmaf tests."""
 
 import sqlite3
 import tempfile

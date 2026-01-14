@@ -30,5 +30,5 @@ COPY config.example.yaml /app/config.example.yaml
 
 # Run in batch mode by default
 # Override with docker run args or Cloud Run Job args
-ENTRYPOINT ["python", "-m", "wa_automate"]
+ENTRYPOINT ["python", "-m", "dmaf"]
 CMD ["--scan-once", "--config", "/config/config.yaml"]

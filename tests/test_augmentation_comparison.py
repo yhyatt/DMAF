@@ -18,7 +18,7 @@ from tests.augmentation_utils import (
     horizontal_flip,
     rotate_image,
 )
-from wa_automate.face_recognition import factory
+from dmaf.face_recognition import factory
 
 
 class TestAugmentationUtilities:
@@ -175,7 +175,7 @@ class TestAugmentationImpact:
                         tolerance = 0.42
 
                         # Create temporary dict for this single image
-                        from wa_automate.face_recognition.insightface_backend import (
+                        from dmaf.face_recognition.insightface_backend import (
                             _embed_faces,
                             _get_app,
                         )
@@ -285,7 +285,7 @@ class TestAugmentationImpact:
 
                 # Extract encodings
                 for _aug_name, img_array in augmented_imgs:
-                    from wa_automate.face_recognition.insightface_backend import (
+                    from dmaf.face_recognition.insightface_backend import (
                         _embed_faces,
                         _get_app,
                     )

@@ -1,9 +1,9 @@
 """
-Entry point for running wa_automate as a module.
+Entry point for running dmaf as a module.
 
 Usage:
-    python -m wa_automate
-    python -m wa_automate --config /path/to/config.yaml
+    python -m dmaf
+    python -m dmaf --config /path/to/config.yaml
 """
 
 import argparse
@@ -14,11 +14,11 @@ from pathlib import Path
 
 from PIL import Image
 
-from wa_automate.config import Settings
-from wa_automate.database import get_database
-from wa_automate.face_recognition import best_match, load_known_faces
-from wa_automate.google_photos import create_media_item, ensure_album, get_creds, upload_bytes
-from wa_automate.watcher import NewImageHandler, run_watch, scan_and_process_once
+from dmaf.config import Settings
+from dmaf.database import get_database
+from dmaf.face_recognition import best_match, load_known_faces
+from dmaf.google_photos import create_media_item, ensure_album, get_creds, upload_bytes
+from dmaf.watcher import NewImageHandler, run_watch, scan_and_process_once
 
 
 def build_processor(known_root: Path, backend: str, tolerance: float, min_face_size: int):

@@ -3,7 +3,7 @@
 import threading
 from pathlib import Path
 
-from wa_automate.database import Database, get_conn
+from dmaf.database import Database, get_conn
 
 
 class TestDatabase:

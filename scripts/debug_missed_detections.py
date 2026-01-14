@@ -22,8 +22,8 @@ from PIL import Image
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from wa_automate.face_recognition import factory
-from wa_automate.face_recognition.insightface_backend import _get_app, _embed_faces
+from dmaf.face_recognition import factory
+from dmaf.face_recognition.insightface_backend import _get_app, _embed_faces
 
 
 def analyze_missed_detections(
@@ -194,7 +194,7 @@ def analyze_missed_detections(
         print("     * Motion blur or low lighting")
         print()
         print("2. Test detection parameters:")
-        print("   from wa_automate.face_recognition.insightface_backend import _get_app")
+        print("   from dmaf.face_recognition.insightface_backend import _get_app")
         print("   from PIL import Image")
         print("   import numpy as np")
         print()

@@ -75,7 +75,7 @@ dev = [
 ]
 
 [project.scripts]
-dmaf = "wa_automate.__main__:main"
+dmaf = "dmaf.__main__:main"
 
 [project.urls]
 Homepage = "https://github.com/yonatan/dmaf"
@@ -84,7 +84,7 @@ Repository = "https://github.com/yonatan/dmaf.git"
 Issues = "https://github.com/yonatan/dmaf/issues"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/wa_automate"]
+packages = ["src/dmaf"]
 
 [tool.ruff]
 line-length = 100
@@ -106,4 +106,4 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
-addopts = "-v --cov=wa_automate --cov-report=term-missing"
+addopts = "-v --cov=dmaf --cov-report=term-missing"

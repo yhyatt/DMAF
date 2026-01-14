@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 import numpy as np
 from PIL import Image
 
-from wa_automate.watcher import NewImageHandler, run_watch, sha256_of_file
+from dmaf.watcher import NewImageHandler, run_watch, sha256_of_file
 
 
 class TestSha256OfFile:
@@ -67,7 +67,7 @@ class TestNewImageHandlerInit:
 class TestNewImageHandlerOnCreated:
     """Test file creation event handling."""
 
-    @patch("wa_automate.watcher.time.sleep")
+    @patch("dmaf.watcher.time.sleep")
     def test_ignore_directory_events(self, mock_sleep):
         """Test that directory creation events are ignored."""
         handler = NewImageHandler(Mock(), Mock(), {})
@@ -81,7 +81,7 @@ class TestNewImageHandlerOnCreated:
         # Should not sleep or process
         mock_sleep.assert_not_called()
 
-    @patch("wa_automate.watcher.time.sleep")
+    @patch("dmaf.watcher.time.sleep")
     def test_ignore_non_image_files(self, mock_sleep):
         """Test that non-image files are ignored."""
         handler = NewImageHandler(Mock(), Mock(), {})
@@ -96,7 +96,7 @@ class TestNewImageHandlerOnCreated:
         # Should not have processed any files
         mock_sleep.assert_not_called()
 
-    @patch("wa_automate.watcher.time.sleep")
+    @patch("dmaf.watcher.time.sleep")
     @patch.object(NewImageHandler, "_handle_file")
     def test_process_image_files(self, mock_handle, mock_sleep):
         """Test that image files are processed."""
@@ -115,7 +115,7 @@ class TestNewImageHandlerOnCreated:
         assert mock_sleep.call_count == 7
         mock_sleep.assert_called_with(0.8)
 
-    @patch("wa_automate.watcher.time.sleep")
+    @patch("dmaf.watcher.time.sleep")
     @patch.object(NewImageHandler, "_handle_file")
     def test_exception_handling(self, mock_handle, mock_sleep):
         """Test that exceptions in _handle_file are caught and logged."""
@@ -156,7 +156,7 @@ class TestNewImageHandlerHandleFile:
         process_fn.assert_not_called()
         db_conn.add_file.assert_not_called()
 
-    @patch("wa_automate.watcher.Image.open")
+    @patch("dmaf.watcher.Image.open")
     def test_skip_corrupted_image(self, mock_image_open, temp_dir: Path):
         """Test that corrupted images are skipped."""
         db_conn = Mock()
@@ -176,8 +176,8 @@ class TestNewImageHandlerHandleFile:
         # Should not have added to database
         db_conn.add_file.assert_not_called()
 
-    @patch("wa_automate.watcher.Image.open")
-    @patch("wa_automate.watcher.sha256_of_file")
+    @patch("dmaf.watcher.Image.open")
+    @patch("dmaf.watcher.sha256_of_file")
     def test_process_matched_image(self, mock_sha256, mock_image_open, temp_dir: Path):
         """Test processing an image that matches a known person."""
         # Setup mocks
@@ -223,8 +223,8 @@ class TestNewImageHandlerHandleFile:
         # Verify on_match was called
         handler.on_match.assert_called_once_with(test_file, ["Alice", "Bob"])
 
-    @patch("wa_automate.watcher.Image.open")
-    @patch("wa_automate.watcher.sha256_of_file")
+    @patch("dmaf.watcher.Image.open")
+    @patch("dmaf.watcher.sha256_of_file")
     def test_process_unmatched_image(self, mock_sha256, mock_image_open, temp_dir: Path):
         """Test processing an image that doesn't match any known person."""
         # Setup mocks
@@ -277,8 +277,8 @@ class TestNewImageHandlerOnMatch:
 class TestRunWatch:
     """Test watchdog observer setup."""
 
-    @patch("wa_automate.watcher.Observer")
-    @patch("wa_automate.watcher.time.sleep")
+    @patch("dmaf.watcher.Observer")
+    @patch("dmaf.watcher.time.sleep")
     def test_run_watch_single_directory(self, mock_sleep, mock_observer_class, temp_dir: Path):
         """Test watching a single directory."""
         watch_dir = temp_dir / "watch"
@@ -304,8 +304,8 @@ class TestRunWatch:
         mock_observer.stop.assert_called_once()
         mock_observer.join.assert_called_once()
 
-    @patch("wa_automate.watcher.Observer")
-    @patch("wa_automate.watcher.time.sleep")
+    @patch("dmaf.watcher.Observer")
+    @patch("dmaf.watcher.time.sleep")
     def test_run_watch_multiple_directories(self, mock_sleep, mock_observer_class, temp_dir: Path):
         """Test watching multiple directories."""
         watch_dirs = [
@@ -330,8 +330,8 @@ class TestRunWatch:
         # Verify observer.schedule was called for each directory
         assert mock_observer.schedule.call_count == 3
 
-    @patch("wa_automate.watcher.Observer")
-    @patch("wa_automate.watcher.time.sleep")
+    @patch("dmaf.watcher.Observer")
+    @patch("dmaf.watcher.time.sleep")
     def test_run_watch_creates_nested_directories(
         self, mock_sleep, mock_observer_class, temp_dir: Path
     ):
@@ -349,8 +349,8 @@ class TestRunWatch:
         # Verify nested directory was created
         assert nested_dir.exists()
 
-    @patch("wa_automate.watcher.Observer")
-    @patch("wa_automate.watcher.time.sleep")
+    @patch("dmaf.watcher.Observer")
+    @patch("dmaf.watcher.time.sleep")
     def test_run_watch_non_recursive(self, mock_sleep, mock_observer_class, temp_dir: Path):
         """Test that watching is non-recursive."""
         watch_dir = temp_dir / "watch"
@@ -371,9 +371,9 @@ class TestRunWatch:
 class TestWatcherIntegration:
     """Test integration between watcher components."""
 
-    @patch("wa_automate.watcher.time.sleep")
-    @patch("wa_automate.watcher.Image.open")
-    @patch("wa_automate.watcher.sha256_of_file")
+    @patch("dmaf.watcher.time.sleep")
+    @patch("dmaf.watcher.Image.open")
+    @patch("dmaf.watcher.sha256_of_file")
     def test_full_workflow(self, mock_sha256, mock_image_open, mock_sleep, temp_dir: Path):
         """Test complete workflow: event -> process -> database."""
         # Setup

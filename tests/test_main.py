@@ -5,13 +5,13 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from wa_automate import __main__
+from dmaf import __main__
 
 
 class TestBuildProcessor:
     """Test build_processor function."""
 
-    @patch("wa_automate.__main__.load_known_faces")
+    @patch("dmaf.__main__.load_known_faces")
     def test_build_processor(self, mock_load):
         """Test building a face recognition processor."""
         # Mock load_known_faces
@@ -32,8 +32,8 @@ class TestBuildProcessor:
         # Verify processor is callable
         assert callable(processor)
 
-    @patch("wa_automate.__main__.load_known_faces")
-    @patch("wa_automate.__main__.best_match")
+    @patch("dmaf.__main__.load_known_faces")
+    @patch("dmaf.__main__.best_match")
     def test_processor_calls_best_match(self, mock_best_match, mock_load):
         """Test that processor function calls best_match."""
         import numpy as np
@@ -96,15 +96,15 @@ class TestMain:
         captured = capsys.readouterr()
         assert "Invalid configuration" in captured.err
 
-    @patch("wa_automate.__main__.run_watch")
-    @patch("wa_automate.__main__.get_creds")
-    @patch("wa_automate.__main__.ensure_album")
-    @patch("wa_automate.__main__.get_conn")
-    @patch("wa_automate.__main__.load_known_faces")
+    @patch("dmaf.__main__.run_watch")
+    @patch("dmaf.__main__.get_creds")
+    @patch("dmaf.__main__.ensure_album")
+    @patch("dmaf.__main__.get_database")
+    @patch("dmaf.__main__.load_known_faces")
     def test_main_success(
         self,
         mock_load,
-        mock_get_conn,
+        mock_get_database,
         mock_ensure_album,
         mock_get_creds,
         mock_run_watch,
@@ -114,7 +114,7 @@ class TestMain:
         # Setup mocks
         mock_load.return_value = ({"alice": []}, ["alice"])
         mock_db = Mock()
-        mock_get_conn.return_value = mock_db
+        mock_get_database.return_value = mock_db
 
         mock_creds = Mock()
         mock_get_creds.return_value = mock_creds
@@ -131,15 +131,15 @@ class TestMain:
 
         assert result == 0
 
-    @patch("wa_automate.__main__.run_watch")
-    @patch("wa_automate.__main__.get_creds")
-    @patch("wa_automate.__main__.ensure_album")
-    @patch("wa_automate.__main__.get_conn")
-    @patch("wa_automate.__main__.load_known_faces")
+    @patch("dmaf.__main__.run_watch")
+    @patch("dmaf.__main__.get_creds")
+    @patch("dmaf.__main__.ensure_album")
+    @patch("dmaf.__main__.get_database")
+    @patch("dmaf.__main__.load_known_faces")
     def test_main_no_album_name(
         self,
         mock_load,
-        mock_get_conn,
+        mock_get_database,
         mock_ensure_album,
         mock_get_creds,
         mock_run_watch,
@@ -171,7 +171,7 @@ class TestMain:
 
         # Setup mocks
         mock_load.return_value = ({}, [])
-        mock_get_conn.return_value = Mock()
+        mock_get_database.return_value = Mock()
         mock_get_creds.return_value = Mock()
 
         # Run main
@@ -180,15 +180,15 @@ class TestMain:
         # ensure_album should NOT have been called
         mock_ensure_album.assert_not_called()
 
-    @patch("wa_automate.__main__.run_watch")
-    @patch("wa_automate.__main__.get_creds")
-    @patch("wa_automate.__main__.ensure_album")
-    @patch("wa_automate.__main__.get_conn")
-    @patch("wa_automate.__main__.load_known_faces")
+    @patch("dmaf.__main__.run_watch")
+    @patch("dmaf.__main__.get_creds")
+    @patch("dmaf.__main__.ensure_album")
+    @patch("dmaf.__main__.get_database")
+    @patch("dmaf.__main__.load_known_faces")
     def test_main_album_creation_fails(
         self,
         mock_load,
-        mock_get_conn,
+        mock_get_database,
         mock_ensure_album,
         mock_get_creds,
         mock_run_watch,
@@ -198,7 +198,7 @@ class TestMain:
         """Test that album creation failure logs warning but continues."""
         # Setup mocks
         mock_load.return_value = ({}, [])
-        mock_get_conn.return_value = Mock()
+        mock_get_database.return_value = Mock()
         mock_get_creds.return_value = Mock()
 
         # Make ensure_album fail
@@ -217,20 +217,20 @@ class TestMain:
 class TestUploader:
     """Test Uploader class (defined in main())."""
 
-    @patch("wa_automate.__main__.run_watch")
-    @patch("wa_automate.__main__.get_creds")
-    @patch("wa_automate.__main__.get_conn")
-    @patch("wa_automate.__main__.load_known_faces")
-    @patch("wa_automate.__main__.Image.open")
-    @patch("wa_automate.__main__.upload_bytes")
-    @patch("wa_automate.__main__.create_media_item")
+    @patch("dmaf.__main__.run_watch")
+    @patch("dmaf.__main__.get_creds")
+    @patch("dmaf.__main__.get_database")
+    @patch("dmaf.__main__.load_known_faces")
+    @patch("dmaf.__main__.Image.open")
+    @patch("dmaf.__main__.upload_bytes")
+    @patch("dmaf.__main__.create_media_item")
     def test_uploader_on_match(
         self,
         mock_create,
         mock_upload,
         mock_image_open,
         mock_load,
-        mock_get_conn,
+        mock_get_database,
         mock_get_creds,
         mock_run_watch,
         sample_config_yaml: Path,
@@ -241,7 +241,7 @@ class TestUploader:
         mock_load.return_value = ({}, [])
 
         mock_db = Mock()
-        mock_get_conn.return_value = mock_db
+        mock_get_database.return_value = mock_db
 
         mock_creds = Mock()
         mock_get_creds.return_value = mock_creds

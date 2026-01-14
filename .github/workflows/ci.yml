@@ -40,7 +40,7 @@ jobs:
         run: pip install -e ".[dev]"
 
       - name: Run mypy
-        run: mypy src/wa_automate
+        run: mypy src/dmaf
 
   test:
     name: Test (Python ${{ matrix.python-version }})
@@ -60,7 +60,7 @@ jobs:
         run: pip install -e ".[dev]"
 
       - name: Run tests (excluding slow tests)
-        run: pytest tests/ -m "not slow" -v --cov=wa_automate --cov-report=xml --cov-report=term
+        run: pytest tests/ -m "not slow" -v --cov=dmaf --cov-report=xml --cov-report=term
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
@@ -90,4 +90,4 @@ jobs:
         run: pip install -e ".[all,dev]"
 
       - name: Run tests with face recognition backends
-        run: pytest tests/ -m "not slow" -v --cov=wa_automate
+        run: pytest tests/ -m "not slow" -v --cov=dmaf

@@ -4,7 +4,7 @@ Google Photos API integration.
 Provides OAuth authentication and media upload functionality.
 """
 
-from wa_automate.google_photos.api import (
+from dmaf.google_photos.api import (
     SCOPES,
     create_media_item,
     ensure_album,

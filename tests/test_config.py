@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from wa_automate.config import DedupSettings, RecognitionSettings, Settings
+from dmaf.config import DedupSettings, RecognitionSettings, Settings
 
 
 class TestRecognitionSettings:
