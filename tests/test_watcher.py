@@ -217,7 +217,10 @@ class TestNewImageHandlerHandleFile:
 
         # Verify database was updated
         db_conn.add_file.assert_called_once_with(
-            str(test_file), "abc123hash", 1, 0  # matched=True -> 1  # uploaded=False -> 0
+            str(test_file),
+            "abc123hash",
+            1,
+            0,  # matched=True -> 1  # uploaded=False -> 0
         )
 
         # Verify on_match was called
@@ -253,7 +256,10 @@ class TestNewImageHandlerHandleFile:
 
         # Verify database was updated with matched=0
         db_conn.add_file.assert_called_once_with(
-            str(test_file), "def456hash", 0, 0  # matched=False -> 0  # uploaded=False -> 0
+            str(test_file),
+            "def456hash",
+            0,
+            0,  # matched=False -> 0  # uploaded=False -> 0
         )
 
         # Verify on_match was NOT called

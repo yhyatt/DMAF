@@ -7,7 +7,6 @@ Supported backends:
 - 'insightface': Deep learning-based face recognition (more accurate)
 """
 
-
 from types import ModuleType
 
 import numpy as np

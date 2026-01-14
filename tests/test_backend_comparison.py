@@ -91,10 +91,10 @@ class TestBackendAccuracy:
 
         person_dirs = [d for d in known_people_path.iterdir() if d.is_dir()]
 
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"Starting LOOCV for {backend_name} backend")
         print(f"Testing {len(person_dirs)} people")
-        print(f"{'='*60}\n")
+        print(f"{'=' * 60}\n")
 
         for person_idx, person_dir in enumerate(person_dirs, 1):
             person_name = person_dir.name
@@ -108,7 +108,7 @@ class TestBackendAccuracy:
             # LOOCV: For each image, train on N-1, test on 1
             for test_idx, test_img_path in enumerate(images):
                 print(
-                    f"  LOOCV {test_idx+1}/{len(images)}: Testing {test_img_path.name}...",
+                    f"  LOOCV {test_idx + 1}/{len(images)}: Testing {test_img_path.name}...",
                     end=" ",
                     flush=True,
                 )
@@ -190,10 +190,10 @@ class TestBackendAccuracy:
         if len(person_dirs) < 2:
             pytest.skip("Need at least 2 people for cross-person testing")
 
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"Starting Cross-Person Rejection for {backend_name} backend")
         print(f"Testing {len(person_dirs)} people (3 images each)")
-        print(f"{'='*60}\n")
+        print(f"{'=' * 60}\n")
 
         for test_person_idx, test_person_dir in enumerate(person_dirs, 1):
             test_person_name = test_person_dir.name
@@ -204,10 +204,7 @@ class TestBackendAccuracy:
             ):  # Limit to 3 images per person for speed
                 person_idx = test_person_idx
                 person_count = len(person_dirs)
-                print(
-                    f"Person {person_idx}/{person_count}: "
-                    f"{test_person_name} - Image {img_idx}/3"
-                )
+                print(f"Person {person_idx}/{person_count}: {test_person_name} - Image {img_idx}/3")
                 test_img = Image.open(test_img_path).convert("RGB")
                 test_img_np = np.array(test_img)
 
@@ -286,10 +283,10 @@ class TestBackendAccuracy:
 
         Expected: FPR < 5% (fewer than 5-6 false matches out of 107)
         """
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"Unknown People Rejection Test for {backend_name} backend")
         print("Testing 107 strangers vs 4 known people")
-        print(f"{'='*60}\n")
+        print(f"{'=' * 60}\n")
 
         # Load ALL known people encodings
         min_face_size = 80

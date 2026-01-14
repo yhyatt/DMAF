@@ -64,6 +64,13 @@ wa_automate/                  # Repository/project root
 - Factory pattern for face recognition backends
 - Thread-safe database operations
 
+### Automated Linting (Pre-commit Hooks)
+- **Installed**: Git hooks auto-format code before each commit
+- **Setup**: `pre-commit install` (already done)
+- **Manual run**: `pre-commit run --all-files`
+- **Hooks**: ruff (linting + formatting), black (formatting), trailing whitespace, etc.
+- **Benefit**: Ensures code quality before committing, prevents CI failures
+
 ## Development Phases
 
 - ✅ **Phase A**: Critical bug fixes (RGB/BGR, caching, retry logic)
@@ -78,16 +85,24 @@ wa_automate/                  # Repository/project root
 
 ```bash
 # Install package (editable mode)
-.venv/bin/pip install -e ".[all]"
+.venv/bin/pip install -e ".[all,dev]"
+
+# Setup pre-commit hooks (automatic linting before commits)
+pre-commit install
 
 # Run application
 python -m dmaf --config config.yaml
 
-# Run tests (when Phase C is complete)
+# Run tests
 pytest tests/ -v --cov=dmaf
 
-# Check types
+# Manual linting (pre-commit does this automatically)
+ruff check src/ tests/ --fix
+black src/ tests/
 mypy src/dmaf
+
+# Run all pre-commit hooks manually
+pre-commit run --all-files
 ```
 
 ## Dependencies

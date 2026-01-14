@@ -15,7 +15,7 @@ Outputs:
 
 import sys
 from pathlib import Path
-from typing import List, Tuple
+
 import numpy as np
 from PIL import Image
 
@@ -23,7 +23,6 @@ from PIL import Image
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from dmaf.face_recognition import factory
-from dmaf.face_recognition.insightface_backend import _get_app, _embed_faces
 
 
 def analyze_missed_detections(
@@ -31,7 +30,7 @@ def analyze_missed_detections(
     backend_name: str = "insightface",
     tolerance: float = 0.42,
     min_face_size: int = 80,
-    enable_augmentation: bool = True
+    enable_augmentation: bool = True,
 ) -> None:
     """
     Run LOOCV and identify all missed detections.
@@ -67,11 +66,7 @@ def analyze_missed_detections(
         if len(images) < 2:
             continue
 
-        person_stats[person_name] = {
-            "total": len(images),
-            "failures": [],
-            "matches": []
-        }
+        person_stats[person_name] = {"total": len(images), "failures": [], "matches": []}
 
         print(f"Person {person_idx}/{len(person_dirs)}: {person_name} ({len(images)} images)")
 
@@ -83,8 +78,8 @@ def analyze_missed_detections(
             train_img_paths = [img for j, img in enumerate(images) if j != test_idx]
 
             # Load encodings using factory (respects augmentation setting)
-            import tempfile
             import shutil
+            import tempfile
 
             with tempfile.TemporaryDirectory() as tmpdir:
                 tmp_path = Path(tmpdir)
@@ -100,7 +95,7 @@ def analyze_missed_detections(
                     str(tmp_path),
                     backend_name=backend_name,
                     min_face_size=min_face_size,
-                    enable_augmentation=enable_augmentation
+                    enable_augmentation=enable_augmentation,
                 )
 
                 # Test held-out image
@@ -112,7 +107,7 @@ def analyze_missed_detections(
                     test_img_np,
                     backend_name=backend_name,
                     tolerance=tolerance,
-                    min_face_size=min_face_size
+                    min_face_size=min_face_size,
                 )
 
                 # Check result
@@ -122,22 +117,26 @@ def analyze_missed_detections(
                 elif not matched or who == []:
                     # NO FACE DETECTED - this is what we're debugging
                     person_stats[person_name]["failures"].append(test_img_path.name)
-                    failures.append({
-                        "person": person_name,
-                        "image": test_img_path.name,
-                        "path": str(test_img_path),
-                        "reason": "No face detected"
-                    })
+                    failures.append(
+                        {
+                            "person": person_name,
+                            "image": test_img_path.name,
+                            "path": str(test_img_path),
+                            "reason": "No face detected",
+                        }
+                    )
                     print(f"  ✗ {test_img_path.name} - NO FACE DETECTED")
                 else:
                     # Matched wrong person (rare)
                     person_stats[person_name]["failures"].append(test_img_path.name)
-                    failures.append({
-                        "person": person_name,
-                        "image": test_img_path.name,
-                        "path": str(test_img_path),
-                        "reason": f"Matched wrong person: {who}"
-                    })
+                    failures.append(
+                        {
+                            "person": person_name,
+                            "image": test_img_path.name,
+                            "path": str(test_img_path),
+                            "reason": f"Matched wrong person: {who}",
+                        }
+                    )
                     print(f"  ✗ {test_img_path.name} - WRONG MATCH: {who}")
 
         print()
@@ -147,7 +146,7 @@ def analyze_missed_detections(
     print("SUMMARY")
     print("=" * 80)
     print(f"Total tests: {total_tests}")
-    print(f"Total failures: {len(failures)} ({len(failures)/total_tests*100:.1f}%)")
+    print(f"Total failures: {len(failures)} ({len(failures) / total_tests * 100:.1f}%)")
     print()
 
     # Per-person breakdown
@@ -163,7 +162,7 @@ def analyze_missed_detections(
         print(f"  Failures: {failure_count} ({failure_rate:.1f}%)")
 
         if stats["failures"]:
-            print(f"  Failed images:")
+            print("  Failed images:")
             for img_name in stats["failures"]:
                 print(f"    - {img_name}")
         print()
@@ -241,7 +240,7 @@ if __name__ == "__main__":
         backend_name="insightface",
         tolerance=0.42,
         min_face_size=80,
-        enable_augmentation=True  # Conservative augmentation
+        enable_augmentation=True,  # Conservative augmentation
     )
 
     print("=" * 80)

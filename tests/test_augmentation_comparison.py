@@ -134,12 +134,12 @@ class TestAugmentationImpact:
 
         person_dirs = [d for d in known_people_path.iterdir() if d.is_dir()]
 
-        print(f"\n{'='*70}")
+        print(f"\n{'=' * 70}")
         print(f"Augmentation Strategy: {strategy_name}")
         print(f"Description: {get_strategy_description(strategy_name)}")
         print(f"Backend: {backend_name}")
         print(f"Testing {len(person_dirs)} people with LOOCV")
-        print(f"{'='*70}\n")
+        print(f"{'=' * 70}\n")
 
         for person_idx, person_dir in enumerate(person_dirs, 1):
             person_name = person_dir.name
@@ -153,7 +153,7 @@ class TestAugmentationImpact:
             # LOOCV: For each image, train on N-1, test on 1
             for test_idx, test_img_path in enumerate(images):
                 print(
-                    f"  LOOCV {test_idx+1}/{len(images)}: {test_img_path.name}...",
+                    f"  LOOCV {test_idx + 1}/{len(images)}: {test_img_path.name}...",
                     end=" ",
                     flush=True,
                 )
@@ -258,11 +258,11 @@ class TestAugmentationImpact:
         backend_name = "insightface"
         augmentation_fns = AUGMENTATION_STRATEGIES[strategy_name]
 
-        print(f"\n{'='*70}")
+        print(f"\n{'=' * 70}")
         print(f"Unknown People FPR Test: {strategy_name}")
         print(f"Description: {get_strategy_description(strategy_name)}")
         print("Testing 107 strangers vs augmented known encodings")
-        print(f"{'='*70}\n")
+        print(f"{'=' * 70}\n")
 
         # Load and augment ALL known people images
         all_encodings = {}

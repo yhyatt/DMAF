@@ -8,7 +8,7 @@ google_photos_album_name: #  "Family - Auto WhatsApp Imports"
 
 # Recognition
 recognition:
-  backend: "face_recognition"   # or "insightface" 
+  backend: "face_recognition"   # or "insightface"
   tolerance: 0.52               # lower = stricter. start 0.52-0.58 for face_recognition
   min_face_size_pixels: 80      # skip tiny faces
   require_any_match: true       # at least one recognized face to upload
