@@ -11,7 +11,7 @@ This guide walks you through deploying DMAF to Google Cloud Platform using Cloud
 ```
 ┌─────────────────┐      ┌──────────────────┐      ┌─────────────────┐
 │ Cloud Scheduler │ ───> │ Cloud Run Job    │ ───> │ Google Photos   │
-│ (every 15 min)  │      │ (scan-once mode) │      │ API             │
+│ (every 3 hours) │      │ (scan-once mode) │      │ API             │
 └─────────────────┘      └──────────────────┘      └─────────────────┘
                                   │
                                   ├─> GCS Bucket (WhatsApp media)
@@ -254,10 +254,10 @@ gcloud logging read "resource.type=cloud_run_job" \
 Automate execution with Cloud Scheduler:
 
 ```bash
-# Create scheduler job (runs every 15 minutes)
+# Create scheduler job (runs every 3 hours)
 gcloud scheduler jobs create http dmaf-schedule \
   --location=us-central1 \
-  --schedule="*/15 * * * *" \
+  --schedule="0 */3 * * *" \
   --uri="https://us-central1-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/$PROJECT_ID/jobs/dmaf-scan:run" \
   --http-method=POST \
   --oauth-service-account-email=$SA_EMAIL
@@ -270,9 +270,9 @@ gcloud scheduler jobs describe dmaf-schedule --location=us-central1
 ```
 
 **Schedule options**:
-- `*/15 * * * *` - Every 15 minutes (recommended)
+- `0 */3 * * *` - Every 3 hours (recommended - stays in free tier)
+- `*/15 * * * *` - Every 15 minutes (faster, ~$1-3/month overage)
 - `0 * * * *` - Every hour
-- `0 */3 * * *` - Every 3 hours
 - `0 0 * * *` - Once daily at midnight
 
 ---
@@ -295,7 +295,7 @@ You need a method to sync WhatsApp media from your phone to the GCS bucket.
    - Bucket: `$PROJECT_ID-whatsapp-media`
    - Local folder: `/storage/emulated/0/WhatsApp/Media/WhatsApp Images/`
    - Sync type: To remote only
-   - Schedule: Every 15 minutes
+   - Schedule: Every 3 hours (match Cloud Scheduler frequency)
 
 ### Option B: rclone + Termux (Free, Technical)
 
@@ -321,7 +321,7 @@ You need a method to sync WhatsApp media from your phone to the GCS bucket.
 
    # Add to crontab
    crontab -e
-   # Add: */15 * * * * ~/sync-whatsapp.sh
+   # Add: 0 */3 * * * ~/sync-whatsapp.sh
    ```
 
 ### Option C: Syncthing (Free, Cross-Platform)
@@ -376,11 +376,12 @@ gcloud billing accounts get-iam-policy $BILLING_ACCOUNT
 
 | Service | Free Tier | Expected Usage | Cost |
 |---------|-----------|----------------|------|
-| Cloud Run Jobs | 2M requests, 360K vCPU-seconds/mo | ~3K executions/mo | $0 |
+| Cloud Run Jobs | 180K vCPU-sec, 360K GiB-sec/mo | ~240 executions/mo (3-hourly) | $0 |
 | Cloud Scheduler | 3 free jobs | 1 job | $0 |
 | Firestore | 1GB storage, 50K reads/day | <100MB, ~1K reads/day | $0 |
 | Secret Manager | 6 active secrets | 3 secrets | $0 |
-| GCS | 5GB storage, 5K operations/mo | <1GB, ~1K operations | $0 |
+| GCS | 5GB storage (US regions) | <1GB | $0 |
+| Artifact Registry | 0.5GB free | ~0.7GB image | ~$0.02/mo |
 | **Total** | | | **$0-5/mo** |
 
 ---
