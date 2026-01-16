@@ -79,10 +79,10 @@ dev = [
 dmaf = "dmaf.__main__:main"
 
 [project.urls]
-Homepage = "https://github.com/yonatan/dmaf"
-Documentation = "https://github.com/yonatan/dmaf#readme"
-Repository = "https://github.com/yonatan/dmaf.git"
-Issues = "https://github.com/yonatan/dmaf/issues"
+Homepage = "https://github.com/yhyatt/DMAF"
+Documentation = "https://github.com/yhyatt/DMAF#readme"
+Repository = "https://github.com/yhyatt/DMAF.git"
+Issues = "https://github.com/yhyatt/DMAF/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/dmaf"]
