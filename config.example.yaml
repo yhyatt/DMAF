@@ -29,6 +29,25 @@ recognition:
   #   face_recognition: 0.55 (11.2% FPR, 92.5% TPR)
   tolerance: 0.42
 
+  # Detection confidence threshold for test images (insightface only) - lower = more faces detected
+  # 0.4 = balanced (catches difficult angles)
+  # 0.5 = strict (obvious faces only)
+  # 0.35 = permissive (may detect non-faces)
+  # Default 0.5 was missing some faces, 0.4 provides better recall
+  det_thresh: 0.4
+
+  # Detection confidence threshold for known_people images (training set, insightface only)
+  # Lower than det_thresh because we assume faces exist in training images
+  # 0.3 = permissive (detect even difficult angles, RECOMMENDED)
+  # 0.4 = balanced
+  # Use lower value to ensure training images with difficult angles/lighting are included
+  det_thresh_known: 0.3
+
+  # Use only highest confidence face when multiple faces detected (insightface only)
+  # Recommended: true for known_people with group photos (avoids encoding background faces)
+  # Set to false only if you need all faces from multi-person photos
+  return_best_only: true
+
   # Minimum face size in pixels (skip tiny faces)
   min_face_size_pixels: 80
 

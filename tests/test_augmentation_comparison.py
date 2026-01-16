@@ -10,7 +10,6 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from dmaf.face_recognition import factory
 from tests.augmentation_utils import (
     AUGMENTATION_STRATEGIES,
     adjust_brightness,
@@ -95,268 +94,71 @@ class TestAugmentationUtilities:
             assert img_array.dtype == np.uint8
 
 
-class TestAugmentationImpact:
-    """Compare recognition accuracy with different augmentation strategies."""
+class TestAugmentationIntegration:
+    """
+    Integration test placeholders for augmentation functionality.
 
-    @pytest.mark.slow
-    @pytest.mark.parametrize(
-        "strategy_name",
-        [
-            "none",  # Baseline
-            "flip_only",  # Most common augmentation
-            "brightness",  # Lighting variations
-            "rotation",  # Slight angle changes
-            "conservative",  # Flip + slight brightness
-            "aggressive",  # All augmentations
-        ],
-    )
-    def test_augmentation_loocv_insightface(self, known_people_path: Path, strategy_name: str):
+    All comprehensive LOOCV tests have been moved to scripts/benchmark_augmentation.py
+    to keep the unit test suite fast (<10 seconds).
+
+    The utility tests in TestAugmentationUtilities verify that augmentation
+    functions work correctly, which is sufficient for CI/CD.
+    """
+
+    def test_augmentation_strategies_defined(self):
         """
-        Test augmentation impact on same-person matching using LOOCV.
+        Fast smoke test: verify all augmentation strategies are defined and importable.
 
-        For each augmentation strategy:
-        - Apply augmentations to training images (N-1 images)
-        - Test against original held-out image
-        - Measure TPR improvement vs baseline
-
-        Expected: Augmentation should improve TPR while maintaining quality.
+        For comprehensive LOOCV benchmarking of augmentation impact, run:
+            python scripts/benchmark_augmentation.py
         """
-        backend_name = "insightface"
-        augmentation_fns = AUGMENTATION_STRATEGIES[strategy_name]
-
-        results = {
-            "correct": 0,
-            "incorrect": 0,
-            "total": 0,
-            "no_face": 0,
-            "training_samples": 0,
-        }
-
-        person_dirs = [d for d in known_people_path.iterdir() if d.is_dir()]
-
-        print(f"\n{'=' * 70}")
-        print(f"Augmentation Strategy: {strategy_name}")
-        print(f"Description: {get_strategy_description(strategy_name)}")
-        print(f"Backend: {backend_name}")
-        print(f"Testing {len(person_dirs)} people with LOOCV")
-        print(f"{'=' * 70}\n")
-
-        for person_idx, person_dir in enumerate(person_dirs, 1):
-            person_name = person_dir.name
-            images = list(person_dir.glob("*.jpg")) + list(person_dir.glob("*.png"))
-
-            if len(images) < 2:
-                continue
-
-            print(f"Person {person_idx}/{len(person_dirs)}: {person_name} ({len(images)} images)")
-
-            # LOOCV: For each image, train on N-1, test on 1
-            for test_idx, test_img_path in enumerate(images):
-                print(
-                    f"  LOOCV {test_idx + 1}/{len(images)}: {test_img_path.name}...",
-                    end=" ",
-                    flush=True,
-                )
-
-                # Build training set (all images EXCEPT test image)
-                train_img_paths = [img for j, img in enumerate(images) if j != test_idx]
-
-                # Apply augmentations to training images
-                train_encodings = []
-                for train_img_path in train_img_paths:
-                    # Get original + augmented versions
-                    augmented_imgs = apply_augmentations(train_img_path, augmentation_fns)
-                    results["training_samples"] += len(augmented_imgs)
-
-                    # Extract face encodings from each version
-                    for _aug_name, img_array in augmented_imgs:
-                        # Use factory to extract encodings
-                        min_face_size = 80
-                        tolerance = 0.42
-
-                        # Create temporary dict for this single image
-                        from dmaf.face_recognition.insightface_backend import (
-                            _embed_faces,
-                            _get_app,
-                        )
-
-                        app = _get_app()
-                        embs = _embed_faces(app, img_array, min_face_size)
-                        train_encodings.extend(embs)
-
-                # Build known encodings dict
-                known = {person_name: train_encodings}
-
-                # Test against original held-out image (no augmentation on test)
-                test_img = Image.open(test_img_path).convert("RGB")
-                test_img_np = np.array(test_img)
-
-                matched, who = factory.best_match(
-                    known,
-                    test_img_np,
-                    backend_name=backend_name,
-                    tolerance=tolerance,
-                    min_face_size=min_face_size,
-                )
-
-                results["total"] += 1
-
-                if matched and person_name in who:
-                    results["correct"] += 1
-                    print("✓ MATCH")
-                elif not matched or who == []:
-                    results["incorrect"] += 1
-                    results["no_face"] += 1
-                    print("✗ NO FACE")
-                else:
-                    results["incorrect"] += 1
-                    print(f"✗ WRONG ({who})")
-
-        # Calculate metrics
-        if results["total"] > 0:
-            tpr = results["correct"] / results["total"]
-            avg_training_samples = results["training_samples"] / results["total"]
-
-            print(f"\n{strategy_name} LOOCV Results (insightface):")
-            print(f"  Strategy: {get_strategy_description(strategy_name)}")
-            print(f"  Total tests: {results['total']}")
-            print(f"  Correct: {results['correct']}")
-            print(f"  Incorrect: {results['incorrect']} ({results['no_face']} no-face)")
-            print(f"  TPR: {tpr:.1%}")
-            print(f"  Avg training samples per test: {avg_training_samples:.1f}")
-
-            # Baseline (none) achieves 77.5% TPR
-            # Expect augmentation to maintain or improve TPR
-            # Allow slight degradation for aggressive strategies
-            if strategy_name == "none":
-                assert tpr > 0.75, f"Baseline TPR {tpr:.1%} below expected 75%"
-            else:
-                # Augmented strategies should be within reasonable range
-                assert tpr > 0.65, f"{strategy_name} TPR {tpr:.1%} severely degraded"
-
-    @pytest.mark.slow
-    @pytest.mark.parametrize(
-        "strategy_name",
-        [
-            "none",  # Baseline
+        # Verify all expected strategies exist
+        expected_strategies = [
+            "none",
             "flip_only",
+            "brightness",
+            "rotation",
             "conservative",
             "aggressive",
-        ],
-    )
-    def test_augmentation_unknown_people_fpr(
-        self, known_people_path: Path, unknown_people_path: Path, strategy_name: str
-    ):
-        """
-        Test augmentation impact on unknown people FPR.
+        ]
 
-        Critical: Augmentation should NOT increase false positive rate.
-        More training data should improve discrimination, not degrade it.
+        for strategy_name in expected_strategies:
+            assert (
+                strategy_name in AUGMENTATION_STRATEGIES
+            ), f"Strategy '{strategy_name}' not found in AUGMENTATION_STRATEGIES"
 
-        Expected: FPR should remain at or near 0.0% for all strategies.
-        """
-        backend_name = "insightface"
-        augmentation_fns = AUGMENTATION_STRATEGIES[strategy_name]
+            # Verify strategy has augmentation functions (or empty list for 'none')
+            aug_fns = AUGMENTATION_STRATEGIES[strategy_name]
+            assert isinstance(
+                aug_fns, list
+            ), f"Strategy '{strategy_name}' should return a list of functions"
 
-        print(f"\n{'=' * 70}")
-        print(f"Unknown People FPR Test: {strategy_name}")
-        print(f"Description: {get_strategy_description(strategy_name)}")
-        print("Testing 107 strangers vs augmented known encodings")
-        print(f"{'=' * 70}\n")
+            # Verify description is available
+            description = get_strategy_description(strategy_name)
+            assert (
+                isinstance(description, str) and len(description) > 0
+            ), f"Strategy '{strategy_name}' should have a non-empty description"
 
-        # Load and augment ALL known people images
-        all_encodings = {}
-        total_training_samples = 0
+        # Verify baseline has no augmentations
+        assert (
+            len(AUGMENTATION_STRATEGIES["none"]) == 0
+        ), "Baseline strategy should have no augmentations"
 
-        for person_dir in known_people_path.iterdir():
-            if not person_dir.is_dir():
-                continue
+        # Verify other strategies have augmentations
+        assert (
+            len(AUGMENTATION_STRATEGIES["flip_only"]) > 0
+        ), "flip_only strategy should have at least one augmentation"
 
-            person_name = person_dir.name
-            person_encodings = []
-
-            for img_path in person_dir.glob("*.jpg"):
-                if "Zone.Identifier" in img_path.name:
-                    continue
-
-                # Apply augmentations
-                augmented_imgs = apply_augmentations(img_path, augmentation_fns)
-                total_training_samples += len(augmented_imgs)
-
-                # Extract encodings
-                for _aug_name, img_array in augmented_imgs:
-                    from dmaf.face_recognition.insightface_backend import (
-                        _embed_faces,
-                        _get_app,
-                    )
-
-                    app = _get_app()
-                    embs = _embed_faces(app, img_array, min_face=80)
-                    person_encodings.extend(embs)
-
-            all_encodings[person_name] = person_encodings
-
-        print(f"Loaded {total_training_samples} training samples (augmented)")
-
-        # Test against unknown people
-        results = {"false_positives": 0, "true_negatives": 0, "total": 0}
-        tolerance = 0.42
-        min_face_size = 80
-
-        unknown_images = list(unknown_people_path.glob("*.jpg")) + list(
-            unknown_people_path.glob("*.png")
-        )
-        print(f"Testing {len(unknown_images)} unknown people images...\n")
-
-        for i, unknown_img_path in enumerate(unknown_images, 1):
-            if i % 20 == 0:
-                print(f"  Progress: {i}/{len(unknown_images)}...")
-
-            # Test original image (no augmentation on test set)
-            unknown_img = Image.open(unknown_img_path).convert("RGB")
-            unknown_img_np = np.array(unknown_img)
-
-            matched, who = factory.best_match(
-                all_encodings,
-                unknown_img_np,
-                backend_name=backend_name,
-                tolerance=tolerance,
-                min_face_size=min_face_size,
-            )
-
-            results["total"] += 1
-
-            if matched and who != []:
-                results["false_positives"] += 1
-                print(f"  ✗ FALSE POSITIVE: {unknown_img_path.name} matched {who}")
-            else:
-                results["true_negatives"] += 1
-
-        # Calculate FPR
-        if results["total"] > 0:
-            fpr = results["false_positives"] / results["total"]
-
-            print(f"\n{strategy_name} Unknown People FPR Results:")
-            print(f"  Strategy: {get_strategy_description(strategy_name)}")
-            print(f"  Total tests: {results['total']}")
-            print(f"  True Negatives: {results['true_negatives']}")
-            print(f"  False Positives: {results['false_positives']}")
-            print(f"  FPR: {fpr:.1%}")
-
-            # CRITICAL: Augmentation should NOT increase FPR
-            # Baseline (none) achieves 0.0% FPR
-            # Augmented strategies should maintain low FPR
-            assert fpr < 0.10, f"{strategy_name} FPR {fpr:.1%} unacceptably high"
-
-            if fpr > 0.02:
-                print(f"\n⚠️  WARNING: {strategy_name} FPR {fpr:.1%} higher than baseline 0.0%")
-                print("   Augmentation may be introducing false positives")
+        print("\n✅ All augmentation strategies are properly defined")
+        print(f"   Strategies available: {', '.join(expected_strategies)}")
+        print("\nFor comprehensive benchmarking, run:")
+        print("    python scripts/benchmark_augmentation.py")
 
 
 class TestAugmentationComparison:
     """Generate comparison report across all augmentation strategies."""
 
-    def test_generate_augmentation_summary(self, known_people_path: Path):
+    def test_generate_augmentation_summary(self):
         """
         Generate summary of augmentation strategies for documentation.
 
@@ -380,8 +182,8 @@ class TestAugmentationComparison:
             )
 
         print("\n" + "=" * 80)
-        print("To run full comparison:")
-        print("  pytest tests/test_augmentation_comparison.py -v -m slow")
+        print("To run full augmentation benchmark:")
+        print("  python scripts/benchmark_augmentation.py")
         print("=" * 80 + "\n")
 
         # Always pass - this is just informational

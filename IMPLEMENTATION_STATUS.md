@@ -601,18 +601,161 @@ pytest tests/ -m "not slow" -v
 
 ---
 
+## ✅ Phase D+: Advanced Detection Tuning & False Positive Analysis - **COMPLETE**
+
+### What Was Accomplished
+
+| Task | Status | Impact |
+|------|--------|--------|
+| 1. Separate detection thresholds | ✅ | `det_thresh_known` (0.3) vs `det_thresh` (0.4) |
+| 2. LOOCV bug fix (critical) | ✅ | Tests now include ALL people, matching production |
+| 3. Cache invalidation on threshold changes | ✅ | Cache key includes `det_thresh_known` parameter |
+| 4. Enhanced failure reporting | ✅ | Show similarity scores + closest matches |
+| 5. Phase 3 FPR statistics | ✅ | Percentiles, safety margin, comprehensive stats |
+| 6. Manual cache clearing | ✅ | `--clear-cache` flag for consistent benchmarks |
+
+### Critical Bug Discovery: LOOCV False Results
+
+**Problem:** All LOOCV tests (debug script + benchmarks) only included the **current person** being tested, not **all known people**. This made tests artificially easier and didn't match production behavior.
+
+**Example of the bug:**
+```python
+# ❌ WRONG (before fix)
+encodings = {person_name: [training_images]}  # Only current person
+
+# ✅ CORRECT (after fix)
+encodings = {
+    "Lenny": [...],    # All Lenny images except test
+    "Louise": [...],   # All Louise images
+    "Zoe": [...],      # All Zoe images
+    "yonatan": [...]   # All yonatan images
+}
+```
+
+**Impact:**
+- Tests could NOT fail by matching to wrong person (eliminated cross-person false positives)
+- **TPR was artificially inflated** - real-world accuracy will be lower
+- Benchmark results did NOT reflect production performance
+
+**Fixed in:**
+- ✅ `scripts/debug_missed_detections.py` (lines 638-648)
+- ✅ `scripts/benchmark_backends.py` (lines 110-120)
+- ✅ `scripts/benchmark_augmentation.py` (lines 93-144)
+
+### Separate Detection Thresholds
+
+**Rationale:** Known people images (training set) are **assumed** to contain faces, so we can use a more permissive threshold (0.3) compared to test images in production (0.4).
+
+**Implementation:**
+```yaml
+# config.yaml
+recognition:
+  det_thresh: 0.4          # Standard threshold for production matching
+  det_thresh_known: 0.3    # Permissive threshold for loading training images
+```
+
+**Benefits:**
+- More faces detected in training images (captures difficult angles)
+- Production maintains conservative threshold (fewer false positives)
+- Cache automatically invalidates when threshold changes (key: `detknown0.30`)
+
+### Enhanced Diagnostic Tools
+
+**Phase 2 (LOOCV) improvements:**
+- Distinguishes "no face detected" from "face detected but no match"
+- Shows closest matching person + similarity score + threshold
+- Example: `✗ image.jpg - FACE DETECTED BUT NO MATCH (closest: Louise 0.492, threshold: 0.500)`
+
+**Phase 3 (FPR) statistics:**
+```
+RECOGNITION SIMILARITY SCORE STATISTICS:
+----------------------------------------
+Samples (with face detected): 95/107
+Recognition threshold: 0.500
+
+  Maximum:        0.489
+  90th percentile: 0.425
+  75th percentile: 0.398
+  Median (50th):   0.362
+  25th percentile: 0.318
+  Mean:           0.362
+  Std deviation:  0.071
+
+Safety margin (threshold - max score): 0.011
+  ✓ Good safety margin (>0.05) but close to boundary
+```
+
+### Cache Management
+
+**Automatic invalidation:**
+- Cache key format: `insightface_mfs80_aug1_detknown0.30_best1_perfile0`
+- Changing `det_thresh_known` from 0.3 → 0.4 changes key → cache miss → recomputes
+
+**Manual clearing:**
+```bash
+python scripts/debug_missed_detections.py --clear-cache
+```
+- Clears only `embedding_cache` table (preserves dedup data)
+- Recommended when testing different parameter combinations
+
+### Testing Results
+
+**Benchmark consistency:**
+- ✅ Tests now match production environment exactly
+- ✅ Benchmarks must be re-run to get accurate TPR/FPR
+- ⚠️ Expected: TPR may decrease (tests can now fail by matching wrong person)
+
+### Files Modified
+
+```
+UPDATED: src/dmaf/config.py                              - Added det_thresh_known field
+UPDATED: src/dmaf/face_recognition/factory.py            - Renamed det_thresh → det_thresh_known in load_known_faces()
+UPDATED: src/dmaf/face_recognition/insightface_backend.py - Updated parameter name
+UPDATED: src/dmaf/__main__.py                            - Pass det_thresh_known to build_processor()
+UPDATED: config.example.yaml                              - Documented new parameters
+UPDATED: scripts/debug_missed_detections.py               - Fixed LOOCV bug (lines 638-648)
+UPDATED: scripts/benchmark_backends.py                    - Fixed LOOCV bug (lines 110-120)
+UPDATED: scripts/benchmark_augmentation.py                - Fixed LOOCV bug (lines 93-144)
+UPDATED: tests/test_factory.py                            - Fixed mock assertion (0.3)
+UPDATED: tests/test_main.py                               - Fixed parameter name
+UPDATED: scripts/README.md                                - Documented --det-thresh-known
+```
+
+### Key Insights
+
+1. **LOOCV must include all people to be valid**
+   - Production: `best_match()` sees ALL known people
+   - Tests: Must also see ALL people (not just target person)
+   - Otherwise: Artificially inflated accuracy
+
+2. **Separate thresholds optimize both goals**
+   - Training: More permissive (capture difficult faces)
+   - Production: Conservative (maintain precision)
+
+3. **Cache invalidation prevents stale results**
+   - Parameter changes automatically trigger recomputation
+   - Manual clearing available for testing
+
+4. **Comprehensive diagnostics enable tuning**
+   - Similarity scores show "how close" to threshold
+   - Safety margin indicates system robustness
+   - Percentile analysis reveals score distribution
+
+---
+
 ## 📊 Overall Progress
 
 ```
-Phase A: ████████████████████ 100% ✅
-Phase B: ████████████████████ 100% ✅
-Phase C: ████████████████████ 100% ✅
-Phase D: ████████████████████ 100% ✅
-Phase E: ████████████████████ 100% ✅
-Phase F: ░░░░░░░░░░░░░░░░░░░░   0% ⏸️
-Phase G: ░░░░░░░░░░░░░░░░░░░░   0% ⏸️
+Phase A:  ████████████████████ 100% ✅
+Phase B:  ████████████████████ 100% ✅
+Phase C:  ████████████████████ 100% ✅
+Phase D:  ████████████████████ 100% ✅
+Phase D+: ████████████████████ 100% ✅
+Phase E:  ████████████████████ 100% ✅
+Phase F:  ░░░░░░░░░░░░░░░░░░░░   0% ⏸️
+Phase G:  ░░░░░░░░░░░░░░░░░░░░   0% ⏸️
 
-Overall: ██████████████████░░  71%
+Overall:  ███████████████████░  75%
 ```
 
 ---
@@ -646,3 +789,8 @@ Deploy wa_automate to Google Cloud Platform:
 - **Factory pattern:** Clean backend switching
 - **Type hints:** Better IDE support and error detection
 - **Docstrings:** Every public function documented
+
+
+routine update of known images
+Observability, and notice on software /devops failures, as well as images with borderline negative recognitions
+quick guide - images, deployment, etc

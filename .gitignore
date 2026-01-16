@@ -31,6 +31,7 @@ token.json
 # Data directory (personal photos and runtime state)
 data/
 !data/known_people/README.md
+!data/unknown_people/README.md
 
 # Test artifacts
 .pytest_cache/
@@ -59,5 +60,5 @@ firebase-debug.log
 project/
 requirements.txt
 
-# Unknown binaries
-code
+# Debug visualizations
+debug_factory/

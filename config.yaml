@@ -1,26 +1,56 @@
-# configuration file
-# WhatsApp incoming media - adapt to your setup
+# DMAF Configuration
+# Copy from config.example.yaml and customize for your setup
+
+# WhatsApp incoming media directories - adapt to your setup
 watch_dirs:
   - "/path/to/WhatsApp/Media/WhatsApp Images"
 
-# Optional album to put uploads into. If omitted, items go to library root.
-google_photos_album_name: #  "Family - Auto WhatsApp Imports"
+# Optional: Google Photos album to upload to (null = library root)
+google_photos_album_name: null  # "Family - Auto WhatsApp Imports"
 
-# Recognition
+# Face Recognition Settings
 recognition:
-  backend: "face_recognition"   # or "insightface"
-  tolerance: 0.52               # lower = stricter. start 0.52-0.58 for face_recognition
-  min_face_size_pixels: 80      # skip tiny faces
-  require_any_match: true       # at least one recognized face to upload
-  allow_multiple_people: true   # upload if any of the whitelisted people appear
+  # Backend: "insightface" (RECOMMENDED) or "face_recognition" (dlib)
+  # Phase D results: insightface is 12x faster with 0% false positives
+  backend: "insightface"
 
-# Known people images root
+  # Matching tolerance - lower = stricter
+  tolerance: 0.5
+
+  # Detection confidence threshold (insightface only) - lower = more faces detected
+  # 0.4 = balanced, 0.5 = strict, 0.35 = permissive
+  det_thresh: 0.4
+
+  # Use only highest confidence face when multiple detected (handles group photos)
+  return_best_only: true
+
+  # Minimum face size in pixels (skip tiny faces)
+  min_face_size_pixels: 80
+
+  # Only upload if at least one known face is detected
+  require_any_match: true
+
+  # Upload if ANY whitelisted person appears (vs. requiring ALL)
+  allow_multiple_people: true
+
+# Known people reference images
 known_people_dir: "./data/known_people"
 
-# Dedup
+# Deduplication settings
 dedup:
-  method: "sha256"    # store hashes in sqlite to avoid reprocessing
+  method: "sha256"
+
+  # Database backend: "sqlite" (local) or "firestore" (cloud)
+  backend: "sqlite"
+
+  # SQLite configuration (for local/testing)
   db_path: "./data/state.sqlite3"
 
-# Logging
+  # Firestore configuration (for cloud deployment)
+  # Uncomment when deploying to GCP:
+  # backend: "firestore"
+  # firestore_project: "your-gcp-project-id"
+  # firestore_collection: "dmaf_files"
+
+# Logging level: DEBUG, INFO, WARNING, ERROR, CRITICAL
 log_level: "INFO"

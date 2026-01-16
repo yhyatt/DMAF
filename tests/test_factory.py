@@ -92,9 +92,9 @@ class TestLoadKnownFaces:
                 "/path/to/known_people", backend_name="insightface", min_face_size=100
             )
 
-            # InsightFace backend gets min_face_size and enable_augmentation parameters
+            # InsightFace backend gets all augmentation/detection parameters
             mock_backend.load_known_faces.assert_called_once_with(
-                "/path/to/known_people", 100, True
+                "/path/to/known_people", 100, True, 0.3, False, False
             )
 
             assert encodings == mock_encodings

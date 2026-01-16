@@ -3,7 +3,7 @@
 ## Project Overview
 WhatsApp media backup automation with face recognition filtering. Monitors WhatsApp directories, identifies photos of known people, and uploads matches to Google Photos.
 
-**Current Status**: Phase B complete (project restructuring), 29% overall progress
+**Current Status**: Phase D+ complete (advanced detection tuning & LOOCV validation), 75% overall progress
 
 ## Communication Preferences
 
@@ -75,10 +75,11 @@ wa_automate/                  # Repository/project root
 
 - ✅ **Phase A**: Critical bug fixes (RGB/BGR, caching, retry logic)
 - ✅ **Phase B**: Project restructuring (src/ layout, Pydantic, pyproject.toml)
-- ⏸️ **Phase C**: Unit tests (80%+ coverage) - Next
-- ⏸️ **Phase D**: Face recognition testing & comparison
-- ⏸️ **Phase E**: CI/CD (GitHub Actions)
-- ⏸️ **Phase F**: Cloud deployment (GCS + Cloud Run)
+- ✅ **Phase C**: Unit tests (81% coverage, 129 tests)
+- ✅ **Phase D**: Face recognition benchmarking & LOOCV validation
+- ✅ **Phase D+**: Advanced detection tuning (separate thresholds, LOOCV bug fix, FPR analysis)
+- ✅ **Phase E**: CI/CD (GitHub Actions, automated testing)
+- ⏸️ **Phase F**: Cloud deployment (GCS + Cloud Run) - Next
 - ⏸️ **Phase G**: Documentation & open-source
 
 ## Useful Commands

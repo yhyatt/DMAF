@@ -24,9 +24,14 @@ class TestBuildProcessor:
             Path("/path/to/known_people"), "face_recognition", 0.5, 80
         )
 
-        # Verify load_known_faces was called
+        # Verify load_known_faces was called with expected parameters
         mock_load.assert_called_once_with(
-            "/path/to/known_people", backend_name="face_recognition", min_face_size=80
+            "/path/to/known_people",
+            backend_name="face_recognition",
+            min_face_size=80,
+            det_thresh_known=0.3,
+            return_best_only=True,
+            db=None,
         )
 
         # Verify processor is callable

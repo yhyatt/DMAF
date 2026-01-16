@@ -21,7 +21,16 @@ from dmaf.google_photos import create_media_item, ensure_album, get_creds, uploa
 from dmaf.watcher import NewImageHandler, run_watch, scan_and_process_once
 
 
-def build_processor(known_root: Path, backend: str, tolerance: float, min_face_size: int):
+def build_processor(
+    known_root: Path,
+    backend: str,
+    tolerance: float,
+    min_face_size: int,
+    det_thresh: float = 0.4,
+    det_thresh_known: float = 0.3,
+    return_best_only: bool = True,
+    db=None,
+):
     """
     Build a face recognition processor function.
 
@@ -30,12 +39,21 @@ def build_processor(known_root: Path, backend: str, tolerance: float, min_face_s
         backend: Face recognition backend ('face_recognition' or 'insightface')
         tolerance: Matching threshold
         min_face_size: Minimum face size in pixels
+        det_thresh: Detection confidence threshold for test images (insightface only)
+        det_thresh_known: Detection confidence threshold for known_people images (insightface only)
+        return_best_only: Use only highest confidence face (handles group photos)
+        db: Optional database for caching embeddings (100x faster startup)
 
     Returns:
         Function that takes an image and returns (matched, person_names)
     """
     encodings, _ = load_known_faces(
-        str(known_root), backend_name=backend, min_face_size=min_face_size
+        str(known_root),
+        backend_name=backend,
+        min_face_size=min_face_size,
+        det_thresh_known=det_thresh_known,
+        return_best_only=return_best_only,
+        db=db,
     )
 
     def process(np_img):
@@ -45,6 +63,8 @@ def build_processor(known_root: Path, backend: str, tolerance: float, min_face_s
             backend_name=backend,
             tolerance=tolerance,
             min_face_size=min_face_size,
+            det_thresh=det_thresh,
+            return_best_only=return_best_only,
         )
 
     return process
@@ -105,11 +125,16 @@ def main(argv: list[str] | None = None) -> int:
 
     logger.info(f"Using face recognition backend: {settings.recognition.backend}")
 
+    # Build processor with embedding cache for fast startup
     process_fn = build_processor(
         settings.known_people_dir,
         settings.recognition.backend,
         settings.recognition.tolerance,
         settings.recognition.min_face_size_pixels,
+        settings.recognition.det_thresh,
+        settings.recognition.det_thresh_known,
+        settings.recognition.return_best_only,
+        db=conn,  # Pass database for embedding cache
     )
 
     creds = get_creds()

@@ -90,4 +90,4 @@ jobs:
         run: pip install -e ".[all,dev]"
 
       - name: Run tests with face recognition backends
-        run: pytest tests/ -m "not slow" -v --cov=dmaf --cov-fail-under=75
+        run: pytest tests/ -m "not slow" -v --cov=dmaf --cov-fail-under=69

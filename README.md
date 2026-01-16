@@ -63,8 +63,10 @@
 
 ### 🔍 Smart Face Recognition
 - **Two powerful backends**: Choose between `dlib` (CPU-optimized) or `InsightFace` (GPU-accelerated, more accurate)
+- **Extensible architecture**: Plugin-based backend system for adding new recognition engines
 - **Multi-face detection**: Handles group photos with multiple faces
 - **Configurable tolerance**: Fine-tune matching sensitivity
+- **Advanced detection thresholds**: Separate thresholds for training vs. production matching
 
 </td>
 <td width="50%">
@@ -192,10 +194,13 @@ google_photos_album_name: "Family - Auto WhatsApp"
 
 # Face recognition settings
 recognition:
-  backend: "insightface"     # or "face_recognition"
-  tolerance: 0.42            # Lower = stricter matching
-  min_face_size_pixels: 80   # Ignore tiny faces
-  require_any_match: true    # Only upload if known face found
+  backend: "insightface"        # or "face_recognition"
+  tolerance: 0.5               # Lower = stricter matching (0.0-1.0)
+  det_thresh: 0.4               # Detection threshold for test images
+  det_thresh_known: 0.3         # More permissive for training images
+  min_face_size_pixels: 80      # Ignore tiny faces
+  require_any_match: true       # Only upload if known face found
+  return_best_only: true        # Use highest confidence face per image
 
 # Known people directory
 known_people_dir: "./data/known_people"
@@ -212,23 +217,41 @@ See [`config.example.yaml`](config.example.yaml) for a complete example with all
 
 ## 🧠 Face Recognition Backends
 
-DMAF supports two face recognition backends, each with different trade-offs:
+DMAF uses a **plugin-based architecture** that makes it easy to add new face recognition engines. Currently includes two production-ready backends:
 
-| Feature | InsightFace | face_recognition (dlib) |
+| Feature | InsightFace (Recommended) | face_recognition (dlib) |
 |---------|-------------|-------------------------|
-| **Accuracy** | ⭐⭐⭐⭐⭐ Higher | ⭐⭐⭐⭐ Good |
-| **False Positive Rate** | 0.0% | ~11% |
-| **Speed** | ⚡ 12x faster | 🐢 Slower |
+| **Accuracy (TPR)** | 82.5% (with augmentation) | 92.5% |
+| **False Positive Rate** | **0.0%** 🛡️ | ~11% ⚠️ |
+| **Speed** | ⚡ **12x faster** | 🐢 Slower |
 | **GPU Support** | ✅ Yes (CUDA) | ❌ CPU only |
-| **Installation** | Requires ONNX Runtime | Requires dlib |
-| **Best For** | Production, privacy-critical | Quick testing, simple setups |
+| **Privacy** | **Perfect** - No strangers uploaded | Risky - False matches |
+| **Installation** | Requires ONNX Runtime | Requires dlib + cmake |
+| **Best For** | Production, privacy-critical apps | Quick testing, development |
 
-### Recommendation
+### 🏆 Recommendation
 
-**Use InsightFace** for production deployments. Our testing showed:
-- Zero false positives (strangers never misidentified as family)
-- 12x faster processing
-- More consistent results across lighting conditions
+**Use InsightFace** for production deployments. Our rigorous testing with 40 family photos + 107 strangers showed:
+- ✅ **Zero false positives** (strangers never misidentified as family)
+- ✅ **12x faster processing** (99s vs 1413s for 40 images)
+- ✅ **82.5% family detection rate** (with conservative augmentation)
+- ✅ **More consistent** across lighting conditions and angles
+
+### 🔌 Extensible Architecture
+
+Adding a new backend is simple - implement the interface:
+```python
+# src/dmaf/face_recognition/your_backend.py
+def load_known_faces(known_root: str, **params):
+    """Load and encode faces from known_people directory."""
+    ...
+
+def best_match(known_faces, test_image, **params):
+    """Match test image against known faces."""
+    ...
+```
+
+Register in `factory.py` and you're done! See existing backends for examples.
 
 ---
 
@@ -277,13 +300,16 @@ black --check src/
 
 ## 🗺️ Roadmap
 
-- [x] **Phase A**: Core bug fixes (RGB/BGR, caching, retry logic)
-- [x] **Phase B**: Project restructuring (src layout, Pydantic)
-- [ ] **Phase C**: Unit tests (80%+ coverage)
-- [ ] **Phase D**: Face recognition benchmarking
-- [ ] **Phase E**: CI/CD (GitHub Actions)
-- [ ] **Phase F**: Cloud deployment (GCS + Cloud Run)
-- [ ] **Phase G**: Docker support
+- [x] **Phase A**: Core bug fixes (RGB/BGR, caching, retry logic) ✅
+- [x] **Phase B**: Project restructuring (src layout, Pydantic) ✅
+- [x] **Phase C**: Unit tests (81% coverage, 129 tests) ✅
+- [x] **Phase D**: Face recognition benchmarking & LOOCV validation ✅
+- [x] **Phase D+**: Advanced detection tuning & FPR analysis ✅ **NEW**
+- [x] **Phase E**: CI/CD (GitHub Actions, automated testing) ✅
+- [ ] **Phase F**: Cloud deployment (GCS + Cloud Run) 🚧
+- [ ] **Phase G**: Docker support & documentation 📝
+
+**Current Progress:** 71% complete (5 of 7 phases done)
 
 ---
 

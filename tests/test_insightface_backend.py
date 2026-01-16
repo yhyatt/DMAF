@@ -23,6 +23,9 @@ class TestGetApp:
     @patch("dmaf.face_recognition.insightface_backend.FaceAnalysis")
     def test_singleton_pattern(self, mock_face_analysis_class):
         """Test that _get_app() returns same instance on multiple calls."""
+        # Clear cache before test to ensure clean state
+        insightface_backend._app_cache.clear()
+
         mock_app = Mock()
         mock_face_analysis_class.return_value = mock_app
 
@@ -40,6 +43,9 @@ class TestGetApp:
     @patch("dmaf.face_recognition.insightface_backend.FaceAnalysis")
     def test_thread_safety(self, mock_face_analysis_class):
         """Test that singleton is thread-safe."""
+        # Clear cache before test to ensure clean state
+        insightface_backend._app_cache.clear()
+
         mock_app = Mock()
         mock_face_analysis_class.return_value = mock_app
 

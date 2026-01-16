@@ -31,7 +31,26 @@
       "Bash(git ls-tree:*)",
       "Bash(ruff check:*)",
       "Bash(black:*)",
-      "Bash(mypy:*)"
+      "Bash(mypy:*)",
+      "Bash(git rev-list:*)",
+      "Bash(git cat-file:*)",
+      "Bash(numfmt:*)",
+      "Bash(git fsck:*)",
+      "Bash(xargs -I {} sh -c 'echo \"\"\"\"=== {} ===\"\"\"\" && cat {}')",
+      "Bash(git reflog:*)",
+      "Bash(git gc:*)",
+      "Bash(pip install:*)",
+      "Bash(dmaf --help:*)",
+      "Bash(python -m dmaf:*)",
+      "Bash(pytest:*)",
+      "Bash(gh run list:*)",
+      "Bash(grep:*)",
+      "WebFetch(domain:docs.cloud.google.com)",
+      "WebSearch",
+      "Bash(python -m pytest tests/ -v --tb=short)",
+      "Bash(python -m pytest:*)",
+      "Bash(python -m py_compile:*)",
+      "Bash(python scripts/debug_missed_detections.py:*)"
     ]
   },
   "hooks": {

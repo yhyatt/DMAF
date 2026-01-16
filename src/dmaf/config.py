@@ -28,6 +28,29 @@ class RecognitionSettings(BaseModel):
         description="Matching threshold (lower = stricter). "
         "Typical: 0.5-0.6 for face_recognition, 0.3-0.5 for insightface",
     )
+    det_thresh: float = Field(
+        default=0.4,
+        ge=0.0,
+        le=1.0,
+        description="InsightFace detection confidence threshold for test images (lower = more faces detected). "
+        "0.4 = balanced (catches difficult angles), 0.5 = strict (obvious faces only), "
+        "0.35 = permissive (may detect non-faces). Ignored for face_recognition backend.",
+    )
+    det_thresh_known: float = Field(
+        default=0.3,
+        ge=0.0,
+        le=1.0,
+        description="InsightFace detection threshold for known_people images (training set). "
+        "Lower than det_thresh because we assume faces exist in training images. "
+        "0.3 = permissive (detect even difficult angles), 0.4 = balanced. "
+        "Ignored for face_recognition backend.",
+    )
+    return_best_only: bool = Field(
+        default=True,
+        description="Use only highest confidence face per image when multiple faces detected. "
+        "Recommended for known_people with group photos to avoid encoding background faces. "
+        "Applies to both known face loading and test image matching (insightface only).",
+    )
     min_face_size_pixels: int = Field(
         default=80,
         ge=20,

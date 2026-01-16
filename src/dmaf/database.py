@@ -1,8 +1,12 @@
 # database logic
 import hashlib
+import json
+import pickle
 import sqlite3
 import threading
 from pathlib import Path
+
+import numpy as np
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS files(
@@ -11,6 +15,15 @@ CREATE TABLE IF NOT EXISTS files(
   sha256 TEXT,
   uploaded INTEGER DEFAULT 0,
   matched INTEGER,
+  created_ts DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS embedding_cache(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  cache_key TEXT UNIQUE,
+  files_hash TEXT NOT NULL,
+  encodings_blob BLOB NOT NULL,
+  people_json TEXT NOT NULL,
   created_ts DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 """
@@ -33,7 +46,7 @@ class Database:
 
         # Initialize schema on first connection
         conn = self._get_conn()
-        conn.execute(SCHEMA)
+        conn.executescript(SCHEMA)  # Use executescript for multiple statements
         conn.commit()
 
     def _get_conn(self) -> sqlite3.Connection:
@@ -69,6 +82,72 @@ class Database:
         with self._write_lock:
             conn = self._get_conn()
             conn.execute("UPDATE files SET uploaded=1 WHERE path=?", (path,))
+            conn.commit()
+
+    def get_cached_embeddings(
+        self, cache_key: str, files_hash: str
+    ) -> tuple[dict[str, list[np.ndarray]], list[str]] | None:
+        """
+        Retrieve cached face embeddings if they match the current files.
+
+        Args:
+            cache_key: Unique key based on backend + parameters
+            files_hash: Hash of known_people directory state (file paths + mtimes)
+
+        Returns:
+            (encodings_dict, people_list) if cache valid, None if cache miss/invalid
+        """
+        conn = self._get_conn()
+        cur = conn.execute(
+            "SELECT files_hash, encodings_blob, people_json FROM embedding_cache WHERE cache_key=?",
+            (cache_key,),
+        )
+        row = cur.fetchone()
+
+        if row is None:
+            return None
+
+        cached_files_hash, encodings_blob, people_json = row
+
+        # Validate: files must match exactly
+        if cached_files_hash != files_hash:
+            return None
+
+        # Deserialize
+        try:
+            encodings: dict[str, list[np.ndarray]] = pickle.loads(encodings_blob)
+            people: list[str] = json.loads(people_json)
+            return encodings, people
+        except (pickle.UnpicklingError, json.JSONDecodeError):
+            return None
+
+    def save_cached_embeddings(
+        self,
+        cache_key: str,
+        files_hash: str,
+        encodings: dict[str, list[np.ndarray]],
+        people: list[str],
+    ):
+        """
+        Save face embeddings to cache.
+
+        Args:
+            cache_key: Unique key based on backend + parameters
+            files_hash: Hash of known_people directory state
+            encodings: Dictionary mapping person names to face encodings
+            people: List of person names
+        """
+        with self._write_lock:
+            # Serialize
+            encodings_blob = pickle.dumps(encodings)
+            people_json = json.dumps(people)
+
+            conn = self._get_conn()
+            conn.execute(
+                "INSERT OR REPLACE INTO embedding_cache(cache_key, files_hash, encodings_blob, people_json) "
+                "VALUES(?,?,?,?)",
+                (cache_key, files_hash, encodings_blob, people_json),
+            )
             conn.commit()
 
     def close(self):
