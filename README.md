@@ -15,17 +15,17 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/yonatan/dmaf/actions/workflows/ci.yml">
-    <img src="https://img.shields.io/github/actions/workflow/status/yonatan/dmaf/ci.yml?branch=main&style=for-the-badge&logo=github&label=CI" alt="CI Status"/>
+  <a href="https://github.com/yhyatt/DMAF/actions/workflows/ci.yml">
+    <img src="https://img.shields.io/github/actions/workflow/status/yhyatt/DMAF/ci.yml?branch=main&style=for-the-badge&logo=github&label=CI" alt="CI Status"/>
   </a>
-  <a href="https://codecov.io/gh/yonatan/dmaf">
-    <img src="https://img.shields.io/codecov/c/github/yonatan/dmaf?style=for-the-badge&logo=codecov&label=Coverage" alt="Coverage"/>
+  <a href="https://codecov.io/gh/yhyatt/DMAF">
+    <img src="https://img.shields.io/codecov/c/github/yhyatt/DMAF?style=for-the-badge&logo=codecov&label=Coverage" alt="Coverage"/>
   </a>
   <a href="https://pypi.org/project/dmaf/">
     <img src="https://img.shields.io/pypi/v/dmaf?style=for-the-badge&logo=pypi&logoColor=white&label=PyPI" alt="PyPI Version"/>
   </a>
-  <a href="https://github.com/yonatan/dmaf/blob/main/LICENSE">
-    <img src="https://img.shields.io/github/license/yonatan/dmaf?style=for-the-badge" alt="License"/>
+  <a href="https://github.com/yhyatt/DMAF/blob/main/LICENSE">
+    <img src="https://img.shields.io/github/license/yhyatt/DMAF?style=for-the-badge" alt="License"/>
   </a>
 </p>
 
@@ -33,14 +33,14 @@
   <a href="https://img.shields.io/pypi/pyversions/dmaf?style=for-the-badge&logo=python&logoColor=white">
     <img src="https://img.shields.io/pypi/pyversions/dmaf?style=for-the-badge&logo=python&logoColor=white" alt="Python Versions"/>
   </a>
-  <a href="https://github.com/yonatan/dmaf/stargazers">
-    <img src="https://img.shields.io/github/stars/yonatan/dmaf?style=for-the-badge&logo=github" alt="GitHub Stars"/>
+  <a href="https://github.com/yhyatt/DMAF/stargazers">
+    <img src="https://img.shields.io/github/stars/yhyatt/DMAF?style=for-the-badge&logo=github" alt="GitHub Stars"/>
   </a>
-  <a href="https://github.com/yonatan/dmaf/issues">
-    <img src="https://img.shields.io/github/issues/yonatan/dmaf?style=for-the-badge&logo=github" alt="GitHub Issues"/>
+  <a href="https://github.com/yhyatt/DMAF/issues">
+    <img src="https://img.shields.io/github/issues/yhyatt/DMAF?style=for-the-badge&logo=github" alt="GitHub Issues"/>
   </a>
-  <a href="https://github.com/yonatan/dmaf">
-    <img src="https://img.shields.io/github/last-commit/yonatan/dmaf?style=for-the-badge&logo=git&logoColor=white" alt="Last Commit"/>
+  <a href="https://github.com/yhyatt/DMAF">
+    <img src="https://img.shields.io/github/last-commit/yhyatt/DMAF?style=for-the-badge&logo=git&logoColor=white" alt="Last Commit"/>
   </a>
 </p>
 
@@ -112,8 +112,8 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/yonatan/dmaf.git
-cd dmaf
+git clone https://github.com/yhyatt/DMAF.git
+cd DMAF
 
 # Create virtual environment
 python -m venv .venv
@@ -341,11 +341,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ---
 
 <p align="center">
-  <sub>Made with ❤️ by <a href="https://github.com/yonatan">yonatan</a></sub>
+  <sub>Made with ❤️ by <a href="https://github.com/yhyatt">yhyatt</a></sub>
 </p>
 
 <p align="center">
-  <a href="https://github.com/yonatan/dmaf">
+  <a href="https://github.com/yhyatt/DMAF">
     <img src="https://img.shields.io/badge/⭐_Star_this_repo-If_it_helped_you!-yellow?style=for-the-badge" alt="Star this repo"/>
   </a>
 </p>
