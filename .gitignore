@@ -10,7 +10,10 @@ env/
 ENV/
 
 # IDE-specific files
-.vscode/
+# VS Code: Allow shared config, ignore personal settings
+.vscode/*
+!.vscode/settings.json      # Shared: Auto-format on save config
+!.vscode/extensions.json    # Shared: Recommended extensions
 .idea/
 *.sublime-project
 *.sublime-workspace
