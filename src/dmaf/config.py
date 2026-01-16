@@ -115,6 +115,104 @@ class DedupSettings(BaseModel):
         return self
 
 
+class KnownRefreshSettings(BaseModel):
+    """Known people auto-refresh configuration."""
+
+    enabled: bool = Field(
+        default=False,
+        description="Enable automatic refresh of known_people images",
+    )
+    interval_days: int = Field(
+        default=60,  # ~2 months
+        ge=7,
+        description="Days between refresh checks (minimum 7)",
+    )
+    target_score: float = Field(
+        default=0.65,
+        ge=0.0,
+        le=1.0,
+        description="Target match score for refresh images. "
+        "Images closest to this score are selected. "
+        "0.65 = moderate confidence (not too easy, not too hard)",
+    )
+    crop_padding_percent: float = Field(
+        default=0.3,
+        ge=0.0,
+        le=1.0,
+        description="Padding around face bounding box when cropping (0.3 = 30%)",
+    )
+
+
+class SmtpSettings(BaseModel):
+    """SMTP configuration for email alerts."""
+
+    host: str = Field(
+        description="SMTP server hostname (e.g., smtp.gmail.com)",
+    )
+    port: int = Field(
+        default=587,
+        ge=1,
+        le=65535,
+        description="SMTP server port (587 for TLS, 465 for SSL)",
+    )
+    username: str = Field(
+        description="SMTP authentication username",
+    )
+    password: str = Field(
+        description="SMTP authentication password (use app-specific password)",
+    )
+    use_tls: bool = Field(
+        default=True,
+        description="Use STARTTLS encryption",
+    )
+    sender_email: str = Field(
+        description="From address for alert emails",
+    )
+
+
+class AlertSettings(BaseModel):
+    """Alert configuration."""
+
+    enabled: bool = Field(
+        default=False,
+        description="Enable email alerting",
+    )
+    recipients: list[str] = Field(
+        default_factory=list,
+        description="Email addresses to send alerts to",
+    )
+    batch_interval_minutes: int = Field(
+        default=60,
+        ge=1,
+        description="Minimum interval between alert emails (to prevent spam)",
+    )
+    borderline_offset: float = Field(
+        default=0.1,
+        ge=0.0,
+        le=0.5,
+        description="Score range below tolerance to flag as borderline. "
+        "E.g., 0.1 means scores in [tolerance-0.1, tolerance] are borderline.",
+    )
+    event_retention_days: int = Field(
+        default=90,
+        ge=7,
+        description="Delete alerted events older than this many days",
+    )
+    smtp: SmtpSettings | None = Field(
+        default=None,
+        description="SMTP settings (required when enabled=True)",
+    )
+
+    @model_validator(mode="after")
+    def validate_smtp_required(self):
+        """Validate SMTP is configured when alerts are enabled."""
+        if self.enabled and self.smtp is None:
+            raise ValueError("SMTP settings required when alerting is enabled")
+        if self.enabled and not self.recipients:
+            raise ValueError("At least one recipient required when alerting is enabled")
+        return self
+
+
 class Settings(BaseSettings):
     """
     Main application settings.
@@ -153,6 +251,14 @@ class Settings(BaseSettings):
     dedup: DedupSettings = Field(
         default_factory=DedupSettings,
         description="Deduplication settings",
+    )
+    known_refresh: KnownRefreshSettings = Field(
+        default_factory=KnownRefreshSettings,
+        description="Known people auto-refresh settings",
+    )
+    alerting: AlertSettings = Field(
+        default_factory=AlertSettings,
+        description="Email alerting settings",
     )
 
     @field_validator("watch_dirs", mode="before")

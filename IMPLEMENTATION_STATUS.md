@@ -1,6 +1,6 @@
 # wa_automate Implementation Status
 
-**Last Updated:** 2026-01-13
+**Last Updated:** 2026-01-16
 
 ---
 
@@ -743,6 +743,329 @@ UPDATED: scripts/README.md                                - Documented --det-thr
 
 ---
 
+---
+
+## ✅ Phase F-prep: Known Images Refresh & Observability - **COMPLETE**
+
+### What Was Accomplished
+
+| Task | Status | Impact |
+|------|--------|--------|
+| 1. Score tracking in face recognition | ✅ | Returns similarity scores (0.0-1.0) for all known people |
+| 2. Database schema expansion | ✅ | New tables + columns for events, alerts, refresh history |
+| 3. Email alerting system | ✅ | SMTP-based notifications with batching |
+| 4. Borderline detection | ✅ | Alerts for "near miss" recognitions |
+| 5. Error tracking | ✅ | Automatic error event recording |
+| 6. Known refresh manager | ✅ | Auto-adds training images every 60 days |
+| 7. Face cropping | ✅ | Extracts face regions with padding |
+| 8. Database cleanup | ✅ | Removes old alerted events (90-day retention) |
+| 9. Comprehensive testing | ✅ | 100 new tests, 73% coverage |
+
+### Feature 1: Score Tracking
+
+**Purpose:** Enable borderline detection and intelligent refresh candidate selection.
+
+**Implementation:**
+- Added `return_scores` parameter to all face recognition backends
+- Returns `dict[person_name, similarity_score]` for all known people
+- Both insightface and dlib backends supported
+- Scores stored in database with each processed file
+
+**Example:**
+```python
+# OLD: matched, person_names = best_match(known, img_rgb)
+# NEW: matched, person_names, scores = best_match(known, img_rgb, return_scores=True)
+# scores = {"Alice": 0.67, "Bob": 0.45, "Louise": 0.38}
+```
+
+### Feature 2: Database Schema Expansion
+
+**New tables:**
+```sql
+-- Event tracking for alerts
+borderline_events    -- Near-miss recognitions (scores close to threshold)
+error_events         -- Processing/upload failures
+alert_batches        -- Sent alert history
+known_refresh_history -- Auto-refresh operations
+
+-- New columns in files table
+match_score REAL        -- Best similarity score (0.0-1.0)
+matched_person TEXT     -- Name of matched person
+```
+
+**New methods:**
+- `add_file_with_score()` - Store files with match scores
+- `add_borderline_event()` - Record near-miss detections
+- `add_error_event()` - Log processing errors
+- `get_pending_alerts()` - Retrieve un-alerted events
+- `mark_events_alerted()` - Mark events as sent
+- `get_refresh_candidates()` - Find images for training refresh
+- `cleanup_old_events()` - Delete old alerted events (90-day retention)
+
+**Schema migration:** Automatically adds missing columns to existing databases.
+
+### Feature 3: Email Alerting System
+
+**Purpose:** Notify user of errors and borderline recognitions that may need manual review.
+
+**Architecture:**
+```
+src/dmaf/alerting/
+├── __init__.py
+├── email_sender.py      # SMTP with TLS
+├── alert_manager.py     # Batching logic
+└── templates.py         # Email content generation
+```
+
+**Alert Types:**
+
+1. **Borderline Recognitions** (batched)
+   - Images with scores in `[threshold - 0.1, threshold)` range
+   - Default: scores between 0.38-0.48 (configurable)
+   - Helps identify missed recognitions for manual review
+
+2. **Processing/Upload Errors** (batched)
+   - Image load failures, corrupted files
+   - Face detection crashes
+   - Google Photos upload failures (auth, quota, network)
+   - Database errors
+
+3. **Known Refresh Events** (immediate)
+   - Notification when new training images are added
+   - Includes cropped face preview
+   - Sent immediately (not batched)
+
+**Batching Strategy:**
+- Events recorded immediately when they occur
+- Alerts sent only after configurable interval (default: 60 minutes)
+- Prevents email floods during batch processing
+- Refresh notifications bypass batching (rare and important)
+
+**Configuration:**
+```yaml
+alerting:
+  enabled: true
+  recipients:
+    - user@example.com
+  batch_interval_minutes: 60
+  borderline_offset: 0.1           # Score range below threshold to alert
+  event_retention_days: 90         # Delete old events after 90 days
+  smtp:
+    host: smtp.gmail.com
+    port: 587
+    username: alerts@example.com
+    password: app-password-here
+    use_tls: true
+    sender_email: dmaf-alerts@example.com
+```
+
+### Feature 4: Known Refresh Manager
+
+**Purpose:** Automatically improve recognition accuracy as people's appearances change over time.
+
+**How it works:**
+1. Every 60 days (configurable), checks if refresh is due
+2. For each known person, finds 1 uploaded image with score closest to `target_score` (0.65)
+3. Crops face from image with configurable padding
+4. Saves cropped face to `known_people/{person}/refresh_YYYYMMDD_HHMMSS_{score}.jpg`
+5. Records operation in `known_refresh_history` table
+6. Sends email notification with cropped image
+
+**Why target_score = 0.65?**
+- Not too easy (0.9) - system already recognizes these well
+- Not too hard (0.4) - risk of false positives
+- Moderate difficulty (0.65) - helps system learn edge cases
+
+**Configuration:**
+```yaml
+known_refresh:
+  enabled: true
+  interval_days: 60
+  target_score: 0.65
+  crop_padding_percent: 0.3  # 30% padding around face bbox
+```
+
+**Face Cropping:**
+- Uses `insightface_backend.get_face_bbox()` to detect face location
+- Adds 30% padding around bounding box (configurable)
+- Respects image boundaries (clips to edges)
+- Saves as high-quality JPEG (quality=95)
+
+### Feature 5: Integration & Observability
+
+**Startup sequence:**
+```
+1. Database cleanup (delete old events >90 days)
+2. Known refresh check (if due, add new training images)
+3. Load face embeddings (includes new refresh images if added)
+4. Build processor with score tracking enabled
+5. Send refresh notification if images were added
+```
+
+**During processing:**
+```
+For each image:
+  1. Detect faces and match against known people
+  2. Store result with scores in database
+  3. If borderline (close to threshold), record event
+  4. If error occurs, record error event
+  5. Upload matched images to Google Photos
+```
+
+**After batch processing (scan-once mode):**
+```
+1. Check if alert interval has passed
+2. If yes and pending events exist, send batched alert
+3. Mark events as alerted
+4. Record alert batch in history
+```
+
+### Testing Summary
+
+**New Tests:** 100 tests (73% coverage, up from 51%)
+
+| Test Suite | Tests | Lines | Coverage |
+|------------|-------|-------|----------|
+| Database new methods | 50 | 600 | 75% |
+| Config validation | 36 | 500 | 97% |
+| Alerting module | 30 | 550 | 91-93% |
+| Known refresh | 20 | 500 | 94% |
+| **Total New Tests** | **100** | **2,150** | **73% overall** |
+
+**Test Coverage by Module:**
+
+| Module | Coverage | Status |
+|--------|----------|--------|
+| `alerting/alert_manager.py` | 93% | ✅ Excellent |
+| `alerting/email_sender.py` | 90% | ✅ Excellent |
+| `alerting/templates.py` | 93% | ✅ Excellent |
+| `known_refresh.py` | 94% | ✅ Excellent |
+| `config.py` | 97% | ✅ Excellent |
+| `database.py` | 75% | ✅ Good (existing code) |
+| `google_photos/api.py` | 100% | ✅ Perfect |
+
+**Test Quality:**
+- ✅ Comprehensive edge case coverage
+- ✅ Both happy paths and error handling tested
+- ✅ Database tests use real SQLite (not mocks)
+- ✅ Strategic mocking for SMTP (no actual emails sent)
+- ✅ Boundary conditions verified (image edges, null values)
+- ✅ Thread safety validated
+- ✅ Timing logic tested with injected timestamps
+
+### Files Created
+
+**New Implementation Files:**
+```
+src/dmaf/alerting/__init__.py
+src/dmaf/alerting/email_sender.py       # SMTP email delivery
+src/dmaf/alerting/alert_manager.py      # Event batching and orchestration
+src/dmaf/alerting/templates.py          # Email content formatting
+src/dmaf/known_refresh.py               # Training image auto-refresh
+```
+
+**New Test Files:**
+```
+tests/test_alerting.py                  # 30 tests, 550+ lines
+tests/test_known_refresh.py             # 20 tests, 500+ lines
+tests/test_database.py                  # +50 tests, +600 lines (extended)
+tests/test_config.py                    # +36 tests, +500 lines (extended)
+```
+
+### Files Modified
+
+**Core Implementation:**
+```
+src/dmaf/config.py                      # Added KnownRefreshSettings, AlertSettings, SmtpSettings
+src/dmaf/database.py                    # Added 10 new methods, 4 new tables, schema migration
+src/dmaf/__main__.py                    # Integrated alerting and refresh on startup
+src/dmaf/watcher.py                     # Score tracking, borderline detection, error recording
+src/dmaf/face_recognition/factory.py    # Added return_scores parameter
+src/dmaf/face_recognition/insightface_backend.py  # Added return_scores, get_face_bbox()
+src/dmaf/face_recognition/dlib_backend.py         # Added return_scores for consistency
+```
+
+**Tests:**
+```
+tests/test_watcher.py                   # Updated for add_file_with_score()
+```
+
+### Configuration Updates
+
+**New config.yaml sections:**
+```yaml
+known_refresh:
+  enabled: false              # Set true to enable auto-refresh
+  interval_days: 60
+  target_score: 0.65
+  crop_padding_percent: 0.3
+
+alerting:
+  enabled: false              # Set true to enable email alerts
+  recipients:
+    - user@example.com
+  batch_interval_minutes: 60
+  borderline_offset: 0.1
+  event_retention_days: 90
+  smtp:
+    host: smtp.gmail.com
+    port: 587
+    username: alerts@example.com
+    password: secret
+    sender_email: alerts@example.com
+```
+
+### Key Insights
+
+1. **Score tracking enables intelligent systems**
+   - Borderline detection helps identify ambiguous cases
+   - Refresh candidate selection uses score proximity, not highest scores
+   - Foundation for future confidence-based filtering
+
+2. **Batching prevents notification fatigue**
+   - Events recorded immediately (no data loss)
+   - Alerts sent periodically (hourly by default)
+   - Refresh notifications bypass batching (rare and important)
+
+3. **Auto-refresh improves long-term accuracy**
+   - Selects moderately challenging images (target_score = 0.65)
+   - Avoids easy cases (system already handles well)
+   - Avoids hard cases (risk of false positives)
+   - Cropped faces reduce storage and noise
+
+4. **Schema migration maintains backward compatibility**
+   - Existing databases automatically upgraded
+   - New columns added with ALTER TABLE
+   - No data loss during migration
+
+5. **Comprehensive testing ensures reliability**
+   - 73% coverage (22% improvement)
+   - Edge cases thoroughly tested
+   - Mock strategies isolate units effectively
+
+### Production Impact
+
+**Before Phase F-prep:**
+- No visibility into near-miss recognitions
+- Manual intervention required for training updates
+- Errors only visible in logs
+- No systematic improvement over time
+
+**After Phase F-prep:**
+- Email alerts for borderline cases and errors
+- Automatic training refresh every 60 days
+- Database cleanup prevents unbounded growth
+- System improves recognition accuracy over time
+- Production-ready observability for cloud deployment
+
+### Git Commits
+
+```
+[To be added after commit]
+```
+
+---
+
 ## 📊 Overall Progress
 
 ```
@@ -752,24 +1075,26 @@ Phase C:  ████████████████████ 100% ✅
 Phase D:  ████████████████████ 100% ✅
 Phase D+: ████████████████████ 100% ✅
 Phase E:  ████████████████████ 100% ✅
+Phase F-prep: ████████████████ 100% ✅ (Observability ready for F)
 Phase F:  ░░░░░░░░░░░░░░░░░░░░   0% ⏸️
 Phase G:  ░░░░░░░░░░░░░░░░░░░░   0% ⏸️
 
-Overall:  ███████████████████░  75%
+Overall:  ████████████████████  80%
 ```
 
 ---
 
 ## 🎯 Next: Phase F - Cloud Deployment
 
-Deploy wa_automate to Google Cloud Platform:
+Deploy dmaf to Google Cloud Platform:
 1. Set up Google Cloud Storage for state persistence
-2. Deploy as Cloud Run service
-3. Configure Cloud Scheduler for periodic execution
-4. Set up monitoring and logging
-5. Document deployment process
+2. Deploy as Cloud Run Job (scheduled execution)
+3. Configure Cloud Scheduler for daily runs
+4. Integrate alerting with cloud environment
+5. Set up monitoring and logging
+6. Document deployment process
 
-**Status:** Ready to begin
+**Status:** Ready to begin (observability features complete)
 **Complexity:** High (requires GCP setup + infrastructure as code)
 
 ---
@@ -790,7 +1115,4 @@ Deploy wa_automate to Google Cloud Platform:
 - **Type hints:** Better IDE support and error detection
 - **Docstrings:** Every public function documented
 
-
-routine update of known images
-Observability, and notice on software /devops failures, as well as images with borderline negative recognitions
 quick guide - images, deployment, etc

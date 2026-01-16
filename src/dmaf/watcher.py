@@ -32,11 +32,13 @@ def sha256_of_file(p: Path) -> str:
 
 
 class NewImageHandler(FileSystemEventHandler):
-    def __init__(self, process_fn, db_conn, cfg):
+    def __init__(self, process_fn, db_conn, cfg, alert_manager=None):
         super().__init__()
         self.process_fn = process_fn
         self.db_conn = db_conn
         self.cfg = cfg
+        self.alert_manager = alert_manager
+        self.logger = logging.getLogger(__name__)
 
     def on_created(self, event):
         if event.is_directory:
@@ -56,18 +58,49 @@ class NewImageHandler(FileSystemEventHandler):
             return
         try:
             img = Image.open(p).convert("RGB")
-        except Exception:
-            # Could be still writing or a non-image - skip
+        except Exception as e:
+            # Record error if alert_manager available
+            if self.alert_manager:
+                self.alert_manager.record_error("processing", str(e), str(p))
             return
+
         np_img = np.array(img)
         h = sha256_of_file(p)
-        matched, who = self.process_fn(np_img)
-        self.db_conn.add_file(str(p), h, int(matched), 0)
+
+        # Call process_fn - it now returns scores if configured
+        result = self.process_fn(np_img)
+
+        # Handle both old (matched, who) and new (matched, who, scores) formats
+        if len(result) == 3:
+            matched, who, scores = result
+        else:
+            matched, who = result
+            scores = {}
+
+        # Extract best score and person
+        best_score = max(scores.values()) if scores else None
+        best_person = max(scores, key=scores.get) if scores else None
+
+        # Check for borderline events (close to but below threshold)
+        if self.alert_manager and best_score is not None and not matched:
+            tolerance = self.cfg.recognition.tolerance
+            borderline_offset = self.cfg.alerting.borderline_offset
+            threshold = 1.0 - tolerance
+            borderline_low = threshold - borderline_offset
+
+            if borderline_low <= best_score < threshold:
+                self.alert_manager.record_borderline(str(p), best_score, tolerance, best_person)
+
+        # Store with scores
+        self.db_conn.add_file_with_score(
+            str(p), h, int(matched), 0, best_score, best_person if matched else None
+        )
+
         if matched:
-            logging.info(f"Match {p.name} -> {who}")
+            self.logger.info(f"Match {p.name} -> {who}")
             self.on_match(p, who)
         else:
-            logging.info(f"No match {p.name}")
+            self.logger.info(f"No match {p.name}")
 
     def on_match(self, p: Path, who):
         pass  # overridden by caller
@@ -138,9 +171,41 @@ def scan_and_process_once(dirs, handler) -> ScanResult:
                 np_img = np.array(img)
                 h = sha256_of_file(image_path)
 
-                is_matched, who = handler.process_fn(np_img)
+                # Call process_fn - it now returns scores if configured
+                result = handler.process_fn(np_img)
 
-                handler.db_conn.add_file(str(image_path), h, int(is_matched), 0)
+                # Handle both old (matched, who) and new (matched, who, scores) formats
+                if len(result) == 3:
+                    is_matched, who, scores = result
+                else:
+                    is_matched, who = result
+                    scores = {}
+
+                # Extract best score and person
+                best_score = max(scores.values()) if scores else None
+                best_person = max(scores, key=scores.get) if scores else None
+
+                # Check for borderline events (close to but below threshold)
+                if handler.alert_manager and best_score is not None and not is_matched:
+                    tolerance = handler.cfg.recognition.tolerance
+                    borderline_offset = handler.cfg.alerting.borderline_offset
+                    threshold = 1.0 - tolerance
+                    borderline_low = threshold - borderline_offset
+
+                    if borderline_low <= best_score < threshold:
+                        handler.alert_manager.record_borderline(
+                            str(image_path), best_score, tolerance, best_person
+                        )
+
+                # Store with scores
+                handler.db_conn.add_file_with_score(
+                    str(image_path),
+                    h,
+                    int(is_matched),
+                    0,
+                    best_score,
+                    best_person if is_matched else None,
+                )
                 processed += 1
 
                 if is_matched:
@@ -153,12 +218,18 @@ def scan_and_process_once(dirs, handler) -> ScanResult:
                     except Exception as e:
                         logger.error(f"Upload failed for {image_path.name}: {e}")
                         errors += 1
+                        # Record error if alert_manager available
+                        if handler.alert_manager:
+                            handler.alert_manager.record_error("upload", str(e), str(image_path))
                 else:
                     logger.info(f"No match {image_path.name}")
 
             except Exception as e:
                 logger.error(f"Error processing {image_path.name}: {e}")
                 errors += 1
+                # Record error if alert_manager available
+                if handler.alert_manager:
+                    handler.alert_manager.record_error("processing", str(e), str(image_path))
 
     success = errors == 0 and processed == new_files
 

@@ -215,12 +215,14 @@ class TestNewImageHandlerHandleFile:
         call_arg = process_fn.call_args[0][0]
         assert isinstance(call_arg, (np.ndarray, Mock))
 
-        # Verify database was updated
-        db_conn.add_file.assert_called_once_with(
+        # Verify database was updated with scores
+        db_conn.add_file_with_score.assert_called_once_with(
             str(test_file),
             "abc123hash",
-            1,
-            0,  # matched=True -> 1  # uploaded=False -> 0
+            1,  # matched=True -> 1
+            0,  # uploaded=False -> 0
+            None,  # best_score (not returned in test mock)
+            None,  # matched_person (not set for old format)
         )
 
         # Verify on_match was called
@@ -254,12 +256,14 @@ class TestNewImageHandlerHandleFile:
         # Process file
         handler._handle_file(test_file)
 
-        # Verify database was updated with matched=0
-        db_conn.add_file.assert_called_once_with(
+        # Verify database was updated with matched=0 and scores
+        db_conn.add_file_with_score.assert_called_once_with(
             str(test_file),
             "def456hash",
-            0,
-            0,  # matched=False -> 0  # uploaded=False -> 0
+            0,  # matched=False -> 0
+            0,  # uploaded=False -> 0
+            None,  # best_score (not returned in test mock)
+            None,  # matched_person
         )
 
         # Verify on_match was NOT called
@@ -413,5 +417,5 @@ class TestWatcherIntegration:
         # Verify full workflow
         db_conn.seen.assert_called_once()
         process_fn.assert_called_once()
-        db_conn.add_file.assert_called_once()
+        db_conn.add_file_with_score.assert_called_once()
         handler.on_match.assert_called_once()

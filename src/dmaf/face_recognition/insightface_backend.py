@@ -216,6 +216,43 @@ def _cosine_sim(a: np.ndarray, b: np.ndarray) -> float:
     return float(np.dot(a, b))
 
 
+def get_face_bbox(
+    img_rgb: np.ndarray,
+    det_thresh: float = 0.4,
+    min_face_size: int = 80,
+) -> tuple[int, int, int, int] | None:
+    """
+    Detect the most confident face in an image and return its bounding box.
+
+    Used for cropping faces for known_people refresh.
+
+    Args:
+        img_rgb: Image as numpy array in RGB format
+        det_thresh: Detection confidence threshold (0.0-1.0)
+        min_face_size: Minimum face size in pixels
+
+    Returns:
+        Tuple of (x1, y1, x2, y2) for the highest confidence face, or None if no face detected
+    """
+    app = _get_app(det_thresh=det_thresh)
+    faces = app.get(img_rgb)
+
+    if not faces:
+        return None
+
+    # Filter by minimum size and find highest confidence face
+    best_face = None
+    best_score = 0.0
+
+    for f in faces:
+        x1, y1, x2, y2 = map(int, f.bbox)
+        if (x2 - x1) >= min_face_size and (y2 - y1) >= min_face_size and f.det_score > best_score:
+            best_score = f.det_score
+            best_face = (x1, y1, x2, y2)
+
+    return best_face
+
+
 def best_match(
     known: dict[str, list[np.ndarray]],
     img_rgb: np.ndarray,
@@ -223,7 +260,8 @@ def best_match(
     min_face_size: int = 80,
     det_thresh: float = 0.4,
     return_best_only: bool = False,
-) -> tuple[bool, list[str]]:
+    return_scores: bool = False,
+) -> tuple[bool, list[str]] | tuple[bool, list[str], dict[str, float]]:
     """
     Find matching faces in an image using InsightFace.
 
@@ -234,21 +272,39 @@ def best_match(
         min_face_size: Minimum face size in pixels
         det_thresh: Detection confidence threshold (0.0-1.0)
         return_best_only: If True and multiple faces detected, use only highest confidence face
+        return_scores: If True, return similarity scores for all known people
 
-    Returns: (any_match, list_of_matched_people)
+    Returns:
+        If return_scores=False: (any_match, list_of_matched_people)
+        If return_scores=True: (any_match, list_of_matched_people, {person: best_score})
     """
     app = _get_app(det_thresh=det_thresh)
     # InsightFace expects RGB input, which is what PIL provides
     # No channel reversal needed!
     test_embs = _embed_faces(app, img_rgb, min_face_size, return_best_only=return_best_only)
     if not test_embs:
+        if return_scores:
+            return False, [], {}
         return False, []
+
     matches = set()
+    scores: dict[str, float] = {}
+
     for e in test_embs:
         for person, plist in known.items():
             if not plist:
                 continue
+            # Calculate best similarity score for this person
+            best_sim = max(_cosine_sim(e, k) for k in plist)
+
+            # Track best score across all test embeddings
+            if person not in scores or best_sim > scores[person]:
+                scores[person] = best_sim
+
             # cosine similarity threshold on normalized embeddings
-            if any(_cosine_sim(e, k) >= (1.0 - tolerance) for k in plist):
+            if best_sim >= (1.0 - tolerance):
                 matches.add(person)
+
+    if return_scores:
+        return (len(matches) > 0), sorted(matches), scores
     return (len(matches) > 0), sorted(matches)

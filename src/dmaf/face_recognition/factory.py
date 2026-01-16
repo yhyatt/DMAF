@@ -213,7 +213,8 @@ def best_match(
     min_face_size: int = 80,
     det_thresh: float = 0.4,
     return_best_only: bool = False,
-) -> tuple[bool, list[str]]:
+    return_scores: bool = False,
+) -> tuple[bool, list[str]] | tuple[bool, list[str], dict[str, float]]:
     """
     Find the best match for faces in an image.
 
@@ -227,26 +228,40 @@ def best_match(
         min_face_size: Minimum face size in pixels
         det_thresh: Detection confidence threshold (0.0-1.0). Only applies to insightface.
         return_best_only: If True, use only highest confidence face (insightface only)
+        return_scores: If True, return similarity scores for all known people
 
     Returns:
-        Tuple of (matched, person_names)
-        - matched: True if any known person was found
-        - person_names: List of matched person names
+        If return_scores=False:
+            Tuple of (matched, person_names)
+            - matched: True if any known person was found
+            - person_names: List of matched person names
+        If return_scores=True:
+            Tuple of (matched, person_names, scores)
+            - matched: True if any known person was found
+            - person_names: List of matched person names
+            - scores: Dict mapping person names to best similarity scores (0.0-1.0)
     """
     backend = _get_backend(backend_name)
 
     if backend_name == "insightface":
-        result: tuple[bool, list[str]] = backend.best_match(
+        result: tuple[bool, list[str]] | tuple[bool, list[str], dict[str, float]] = (
+            backend.best_match(
+                known,
+                img_rgb,
+                tolerance=tolerance,
+                min_face_size=min_face_size,
+                det_thresh=det_thresh,
+                return_best_only=return_best_only,
+                return_scores=return_scores,
+            )
+        )
+    else:
+        result = backend.best_match(
             known,
             img_rgb,
             tolerance=tolerance,
             min_face_size=min_face_size,
-            det_thresh=det_thresh,
-            return_best_only=return_best_only,
-        )
-    else:
-        result = backend.best_match(
-            known, img_rgb, tolerance=tolerance, min_face_size=min_face_size
+            return_scores=return_scores,
         )
     return result
 

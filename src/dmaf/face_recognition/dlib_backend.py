@@ -48,7 +48,8 @@ def best_match(
     img_rgb: np.ndarray,
     tolerance: float = 0.52,
     min_face_size: int = 80,
-) -> tuple[bool, list[str]]:
+    return_scores: bool = False,
+) -> tuple[bool, list[str]] | tuple[bool, list[str], dict[str, float]]:
     """
     Find matching faces in an image.
 
@@ -57,8 +58,11 @@ def best_match(
         img_rgb: Image as numpy array in RGB format (from PIL Image.open().convert("RGB"))
         tolerance: Matching threshold (lower = stricter, typical: 0.5-0.6)
         min_face_size: Minimum face size in pixels
+        return_scores: If True, return similarity scores for all known people
 
-    Returns: (any_match, list_of_matched_people)
+    Returns:
+        If return_scores=False: (any_match, list_of_matched_people)
+        If return_scores=True: (any_match, list_of_matched_people, {person: best_score})
     """
     # face_recognition expects RGB input, which is what PIL provides
     # No channel reversal needed!
@@ -66,14 +70,36 @@ def best_match(
     # Optionally filter tiny boxes
     locs = [b for b in locs if (b[2] - b[0]) >= min_face_size and (b[1] - b[3]) >= min_face_size]
     if not locs:
+        if return_scores:
+            return False, [], {}
         return False, []
+
     encs = face_recognition.face_encodings(img_rgb, locs)
     matches = set()
+    scores: dict[str, float] = {}
+
     for enc in encs:
         for person, plist in known.items():
             if not plist:
                 continue
+
+            # Calculate distances (lower = more similar)
+            distances = face_recognition.face_distance(plist, enc)
+            best_distance = float(np.min(distances))
+
+            # Convert distance to similarity score (0.0-1.0, higher = more similar)
+            # Distance 0.0 -> similarity 1.0, Distance 1.0 -> similarity 0.0
+            best_sim = 1.0 - best_distance
+
+            # Track best score across all test encodings
+            if person not in scores or best_sim > scores[person]:
+                scores[person] = best_sim
+
+            # Check if any match is within tolerance
             results = face_recognition.compare_faces(plist, enc, tolerance=tolerance)
             if any(results):
                 matches.add(person)
+
+    if return_scores:
+        return (len(matches) > 0), sorted(matches), scores
     return (len(matches) > 0), sorted(matches)

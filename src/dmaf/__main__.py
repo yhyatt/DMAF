@@ -14,10 +14,12 @@ from pathlib import Path
 
 from PIL import Image
 
+from dmaf.alerting import AlertManager
 from dmaf.config import Settings
 from dmaf.database import get_database
 from dmaf.face_recognition import best_match, load_known_faces
 from dmaf.google_photos import create_media_item, ensure_album, get_creds, upload_bytes
+from dmaf.known_refresh import KnownRefreshManager
 from dmaf.watcher import NewImageHandler, run_watch, scan_and_process_once
 
 
@@ -30,6 +32,7 @@ def build_processor(
     det_thresh_known: float = 0.3,
     return_best_only: bool = True,
     db=None,
+    return_scores: bool = True,
 ):
     """
     Build a face recognition processor function.
@@ -43,9 +46,12 @@ def build_processor(
         det_thresh_known: Detection confidence threshold for known_people images (insightface only)
         return_best_only: Use only highest confidence face (handles group photos)
         db: Optional database for caching embeddings (100x faster startup)
+        return_scores: If True, return scores with results (for alerting & refresh features)
 
     Returns:
-        Function that takes an image and returns (matched, person_names)
+        Function that takes an image and returns:
+        - If return_scores=False: (matched, person_names)
+        - If return_scores=True: (matched, person_names, scores_dict)
     """
     encodings, _ = load_known_faces(
         str(known_root),
@@ -65,6 +71,7 @@ def build_processor(
             min_face_size=min_face_size,
             det_thresh=det_thresh,
             return_best_only=return_best_only,
+            return_scores=return_scores,
         )
 
     return process
@@ -125,6 +132,53 @@ def main(argv: list[str] | None = None) -> int:
 
     logger.info(f"Using face recognition backend: {settings.recognition.backend}")
 
+    # Initialize alert manager if enabled
+    alert_manager = None
+    if settings.alerting.enabled:
+        alert_manager = AlertManager(settings.alerting, conn)
+        logger.info("Alert manager initialized")
+
+    # Run database cleanup if alerting is enabled
+    if settings.alerting.enabled:
+        deleted = conn.cleanup_old_events(settings.alerting.event_retention_days)
+        if sum(deleted) > 0:
+            logger.info(
+                f"Cleanup: deleted {deleted[0]} borderline + {deleted[1]} error events "
+                f"older than {settings.alerting.event_retention_days} days"
+            )
+
+    # Check if known refresh is due
+    if settings.known_refresh.enabled:
+        refresh_mgr = KnownRefreshManager(
+            settings.known_refresh,
+            conn,
+            settings.known_people_dir,
+            settings.recognition.backend,
+        )
+
+        if refresh_mgr.should_refresh():
+            logger.info("Known refresh is due, running refresh operation")
+            refresh_results = refresh_mgr.run_refresh()
+
+            if refresh_results and alert_manager:
+                # Send immediate notification for refresh
+                alert_manager.send_refresh_notification(
+                    [
+                        {
+                            "person_name": r.person_name,
+                            "source_file_path": r.source_file_path,
+                            "target_file_path": r.target_file_path,
+                            "match_score": r.match_score,
+                            "target_score": r.target_score,
+                        }
+                        for r in refresh_results
+                    ]
+                )
+
+            # Reload known faces after refresh (new images added)
+            if refresh_results:
+                logger.info("Reloading known faces after refresh")
+
     # Build processor with embedding cache for fast startup
     process_fn = build_processor(
         settings.known_people_dir,
@@ -135,6 +189,7 @@ def main(argv: list[str] | None = None) -> int:
         settings.recognition.det_thresh_known,
         settings.recognition.return_best_only,
         db=conn,  # Pass database for embedding cache
+        return_scores=True,  # Enable score tracking for alerting/refresh
     )
 
     creds = get_creds()
@@ -148,17 +203,24 @@ def main(argv: list[str] | None = None) -> int:
 
     class Uploader(NewImageHandler):
         def on_match(self, p: Path, who: list[str]) -> None:
-            img = Image.open(p).convert("RGB")
-            bio = io.BytesIO()
-            img.save(bio, format="JPEG", quality=92)
-            up_token = upload_bytes(creds, bio.getvalue(), p.name)
-            _id = create_media_item(
-                creds, up_token, album_id, description=f"Auto-import: {', '.join(who)}"
-            )
-            self.db_conn.mark_uploaded(str(p))
-            logger.info(f"Uploaded -> MediaItem {_id}")
+            try:
+                img = Image.open(p).convert("RGB")
+                bio = io.BytesIO()
+                img.save(bio, format="JPEG", quality=92)
+                up_token = upload_bytes(creds, bio.getvalue(), p.name)
+                _id = create_media_item(
+                    creds, up_token, album_id, description=f"Auto-import: {', '.join(who)}"
+                )
+                self.db_conn.mark_uploaded(str(p))
+                logger.info(f"Uploaded -> MediaItem {_id}")
+            except Exception as e:
+                logger.error(f"Upload failed for {p.name}: {e}")
+                # Record error if alert_manager available
+                if self.alert_manager:
+                    self.alert_manager.record_error("upload", str(e), str(p))
+                raise  # Re-raise so scan_and_process_once can count it as error
 
-    handler = Uploader(process_fn, conn, settings)
+    handler = Uploader(process_fn, conn, settings, alert_manager=alert_manager)
 
     if args.scan_once:
         # Batch mode: scan once and exit
@@ -171,10 +233,21 @@ def main(argv: list[str] | None = None) -> int:
             f"{result.uploaded} uploaded, {result.errors} errors"
         )
 
+        # Check if alerts should be sent after batch processing
+        if alert_manager and alert_manager.should_send_alert():
+            logger.info("Sending pending alerts")
+            events_sent = alert_manager.send_pending_alerts()
+            logger.info(f"Sent alert with {events_sent} event(s)")
+
         return 0 if result.success else 1
     else:
         # Watcher mode: continuous monitoring
         logger.info("Running in watcher mode (continuous)")
+
+        # TODO: In watcher mode, periodically check and send alerts
+        # This could be done with a separate thread or using watchdog's timer
+        # For now, alerts are only sent in batch mode or manually
+
         run_watch([str(d) for d in settings.watch_dirs], handler)
         return 0
 

@@ -93,6 +93,26 @@
 
 </td>
 </tr>
+<tr>
+<td width="50%">
+
+### 📧 Observability & Monitoring
+- **Email alerts**: Notifications for errors and borderline recognitions
+- **Score tracking**: Records similarity scores (0.0-1.0) for all matches
+- **Batched notifications**: Hourly alerts prevent email spam
+- **Event retention**: 90-day retention with automatic cleanup
+
+</td>
+<td width="50%">
+
+### 🔄 Auto-Refresh Training
+- **Intelligent updates**: Automatically adds training images every 60 days
+- **Smart selection**: Chooses moderately challenging images (score ≈ 0.65)
+- **Face cropping**: Extracts and saves cropped faces with padding
+- **Email notifications**: Get notified when new training images are added
+
+</td>
+</tr>
 </table>
 
 ---

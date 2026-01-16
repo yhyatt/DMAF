@@ -306,3 +306,422 @@ class TestSettingsValidation:
 
         settings = Settings(google_photos_album_name=None, known_people_dir=known_dir)
         assert settings.google_photos_album_name is None
+
+
+class TestKnownRefreshSettings:
+    """Test KnownRefreshSettings configuration."""
+
+    def test_default_values(self):
+        """Test default values for refresh settings."""
+        from dmaf.config import KnownRefreshSettings
+
+        settings = KnownRefreshSettings()
+
+        assert settings.enabled is False
+        assert settings.interval_days == 60
+        assert settings.target_score == 0.65
+        assert settings.crop_padding_percent == 0.3
+
+    def test_valid_interval_days(self):
+        """Test valid interval_days values."""
+        from dmaf.config import KnownRefreshSettings
+
+        settings = KnownRefreshSettings(interval_days=7)
+        assert settings.interval_days == 7
+
+        settings = KnownRefreshSettings(interval_days=365)
+        assert settings.interval_days == 365
+
+    def test_invalid_interval_days_too_low(self):
+        """Test that interval_days must be >= 7."""
+        import pytest
+        from pydantic import ValidationError
+
+        from dmaf.config import KnownRefreshSettings
+
+        with pytest.raises(ValidationError) as exc_info:
+            KnownRefreshSettings(interval_days=6)
+
+        assert "interval_days" in str(exc_info.value)
+
+    def test_valid_target_score(self):
+        """Test valid target_score range."""
+        from dmaf.config import KnownRefreshSettings
+
+        settings = KnownRefreshSettings(target_score=0.0)
+        assert settings.target_score == 0.0
+
+        settings = KnownRefreshSettings(target_score=0.5)
+        assert settings.target_score == 0.5
+
+        settings = KnownRefreshSettings(target_score=1.0)
+        assert settings.target_score == 1.0
+
+    def test_invalid_target_score_out_of_range(self):
+        """Test that target_score must be 0-1."""
+        import pytest
+        from pydantic import ValidationError
+
+        from dmaf.config import KnownRefreshSettings
+
+        with pytest.raises(ValidationError):
+            KnownRefreshSettings(target_score=-0.1)
+
+        with pytest.raises(ValidationError):
+            KnownRefreshSettings(target_score=1.1)
+
+    def test_valid_crop_padding(self):
+        """Test valid crop_padding_percent range."""
+        from dmaf.config import KnownRefreshSettings
+
+        settings = KnownRefreshSettings(crop_padding_percent=0.0)
+        assert settings.crop_padding_percent == 0.0
+
+        settings = KnownRefreshSettings(crop_padding_percent=0.5)
+        assert settings.crop_padding_percent == 0.5
+
+        settings = KnownRefreshSettings(crop_padding_percent=1.0)
+        assert settings.crop_padding_percent == 1.0
+
+    def test_invalid_crop_padding_out_of_range(self):
+        """Test that crop_padding_percent must be 0-1."""
+        import pytest
+        from pydantic import ValidationError
+
+        from dmaf.config import KnownRefreshSettings
+
+        with pytest.raises(ValidationError):
+            KnownRefreshSettings(crop_padding_percent=-0.1)
+
+        with pytest.raises(ValidationError):
+            KnownRefreshSettings(crop_padding_percent=1.1)
+
+
+class TestSmtpSettings:
+    """Test SmtpSettings configuration."""
+
+    def test_valid_smtp_config(self):
+        """Test valid SMTP configuration."""
+        from dmaf.config import SmtpSettings
+
+        settings = SmtpSettings(
+            host="smtp.gmail.com",
+            port=587,
+            username="user@example.com",
+            password="app-password",
+            use_tls=True,
+            sender_email="alerts@example.com",
+        )
+
+        assert settings.host == "smtp.gmail.com"
+        assert settings.port == 587
+        assert settings.username == "user@example.com"
+        assert settings.password == "app-password"
+        assert settings.use_tls is True
+        assert settings.sender_email == "alerts@example.com"
+
+    def test_default_port_and_tls(self):
+        """Test default values for port and TLS."""
+        from dmaf.config import SmtpSettings
+
+        settings = SmtpSettings(
+            host="smtp.example.com",
+            username="user",
+            password="pass",
+            sender_email="sender@example.com",
+        )
+
+        assert settings.port == 587
+        assert settings.use_tls is True
+
+    def test_valid_port_range(self):
+        """Test valid port range."""
+        from dmaf.config import SmtpSettings
+
+        settings = SmtpSettings(
+            host="smtp.example.com",
+            port=25,
+            username="user",
+            password="pass",
+            sender_email="sender@example.com",
+        )
+        assert settings.port == 25
+
+        settings = SmtpSettings(
+            host="smtp.example.com",
+            port=465,
+            username="user",
+            password="pass",
+            sender_email="sender@example.com",
+        )
+        assert settings.port == 465
+
+    def test_invalid_port_out_of_range(self):
+        """Test that port must be 1-65535."""
+        import pytest
+        from pydantic import ValidationError
+
+        from dmaf.config import SmtpSettings
+
+        with pytest.raises(ValidationError):
+            SmtpSettings(
+                host="smtp.example.com",
+                port=0,
+                username="user",
+                password="pass",
+                sender_email="sender@example.com",
+            )
+
+        with pytest.raises(ValidationError):
+            SmtpSettings(
+                host="smtp.example.com",
+                port=65536,
+                username="user",
+                password="pass",
+                sender_email="sender@example.com",
+            )
+
+
+class TestAlertSettings:
+    """Test AlertSettings configuration."""
+
+    def test_default_values(self):
+        """Test default values for alert settings."""
+        from dmaf.config import AlertSettings
+
+        settings = AlertSettings()
+
+        assert settings.enabled is False
+        assert settings.recipients == []
+        assert settings.batch_interval_minutes == 60
+        assert settings.borderline_offset == 0.1
+        assert settings.event_retention_days == 90
+        assert settings.smtp is None
+
+    def test_valid_alert_config(self):
+        """Test valid alert configuration."""
+        from dmaf.config import AlertSettings, SmtpSettings
+
+        smtp = SmtpSettings(
+            host="smtp.gmail.com",
+            username="user@example.com",
+            password="pass",
+            sender_email="alerts@example.com",
+        )
+
+        settings = AlertSettings(enabled=True, recipients=["user@example.com"], smtp=smtp)
+
+        assert settings.enabled is True
+        assert settings.recipients == ["user@example.com"]
+        assert settings.smtp is not None
+
+    def test_valid_batch_interval(self):
+        """Test valid batch_interval_minutes."""
+        from dmaf.config import AlertSettings
+
+        settings = AlertSettings(batch_interval_minutes=30)
+        assert settings.batch_interval_minutes == 30
+
+        settings = AlertSettings(batch_interval_minutes=1440)  # 24 hours
+        assert settings.batch_interval_minutes == 1440
+
+    def test_invalid_batch_interval_too_low(self):
+        """Test that batch_interval_minutes must be >= 1."""
+        import pytest
+        from pydantic import ValidationError
+
+        from dmaf.config import AlertSettings
+
+        with pytest.raises(ValidationError):
+            AlertSettings(batch_interval_minutes=0)
+
+    def test_valid_borderline_offset(self):
+        """Test valid borderline_offset range."""
+        from dmaf.config import AlertSettings
+
+        settings = AlertSettings(borderline_offset=0.0)
+        assert settings.borderline_offset == 0.0
+
+        settings = AlertSettings(borderline_offset=0.25)
+        assert settings.borderline_offset == 0.25
+
+        settings = AlertSettings(borderline_offset=0.5)
+        assert settings.borderline_offset == 0.5
+
+    def test_invalid_borderline_offset_out_of_range(self):
+        """Test that borderline_offset must be 0-0.5."""
+        import pytest
+        from pydantic import ValidationError
+
+        from dmaf.config import AlertSettings
+
+        with pytest.raises(ValidationError):
+            AlertSettings(borderline_offset=-0.1)
+
+        with pytest.raises(ValidationError):
+            AlertSettings(borderline_offset=0.6)
+
+    def test_valid_retention_days(self):
+        """Test valid event_retention_days."""
+        from dmaf.config import AlertSettings
+
+        settings = AlertSettings(event_retention_days=7)
+        assert settings.event_retention_days == 7
+
+        settings = AlertSettings(event_retention_days=365)
+        assert settings.event_retention_days == 365
+
+    def test_invalid_retention_days_too_low(self):
+        """Test that event_retention_days must be >= 7."""
+        import pytest
+        from pydantic import ValidationError
+
+        from dmaf.config import AlertSettings
+
+        with pytest.raises(ValidationError):
+            AlertSettings(event_retention_days=6)
+
+    def test_validate_smtp_required_when_enabled(self):
+        """Test that SMTP is required when alerting is enabled."""
+        import pytest
+        from pydantic import ValidationError
+
+        from dmaf.config import AlertSettings
+
+        with pytest.raises(ValidationError) as exc_info:
+            AlertSettings(enabled=True, recipients=["user@example.com"], smtp=None)
+
+        assert "SMTP settings required" in str(exc_info.value)
+
+    def test_validate_recipients_required_when_enabled(self):
+        """Test that recipients are required when alerting is enabled."""
+        import pytest
+        from pydantic import ValidationError
+
+        from dmaf.config import AlertSettings, SmtpSettings
+
+        smtp = SmtpSettings(
+            host="smtp.gmail.com",
+            username="user@example.com",
+            password="pass",
+            sender_email="alerts@example.com",
+        )
+
+        with pytest.raises(ValidationError) as exc_info:
+            AlertSettings(enabled=True, recipients=[], smtp=smtp)
+
+        assert "At least one recipient required" in str(exc_info.value)
+
+    def test_alerting_disabled_no_smtp_required(self):
+        """Test that SMTP is not required when alerting is disabled."""
+        from dmaf.config import AlertSettings
+
+        # Should not raise error
+        settings = AlertSettings(enabled=False, recipients=[], smtp=None)
+        assert settings.enabled is False
+
+
+class TestSettingsWithNewFields:
+    """Test Settings model with new fields."""
+
+    def test_settings_has_known_refresh(self, temp_dir: Path):
+        """Test that Settings includes known_refresh field."""
+        known_dir = temp_dir / "known_people"
+        known_dir.mkdir()
+
+        settings = Settings(known_people_dir=known_dir)
+
+        assert hasattr(settings, "known_refresh")
+        assert settings.known_refresh.enabled is False
+
+    def test_settings_has_alerting(self, temp_dir: Path):
+        """Test that Settings includes alerting field."""
+        known_dir = temp_dir / "known_people"
+        known_dir.mkdir()
+
+        settings = Settings(known_people_dir=known_dir)
+
+        assert hasattr(settings, "alerting")
+        assert settings.alerting.enabled is False
+
+    def test_settings_with_refresh_enabled(self, temp_dir: Path):
+        """Test Settings with refresh enabled."""
+        from dmaf.config import KnownRefreshSettings
+
+        known_dir = temp_dir / "known_people"
+        known_dir.mkdir()
+
+        refresh_settings = KnownRefreshSettings(enabled=True, interval_days=30)
+        settings = Settings(known_people_dir=known_dir, known_refresh=refresh_settings)
+
+        assert settings.known_refresh.enabled is True
+        assert settings.known_refresh.interval_days == 30
+
+    def test_settings_with_alerting_enabled(self, temp_dir: Path):
+        """Test Settings with alerting enabled."""
+        from dmaf.config import AlertSettings, SmtpSettings
+
+        known_dir = temp_dir / "known_people"
+        known_dir.mkdir()
+
+        smtp = SmtpSettings(
+            host="smtp.gmail.com",
+            username="user@example.com",
+            password="pass",
+            sender_email="alerts@example.com",
+        )
+        alerting_settings = AlertSettings(enabled=True, recipients=["user@example.com"], smtp=smtp)
+
+        settings = Settings(known_people_dir=known_dir, alerting=alerting_settings)
+
+        assert settings.alerting.enabled is True
+        assert len(settings.alerting.recipients) == 1
+
+    def test_settings_yaml_with_new_fields(self, temp_dir: Path):
+        """Test loading Settings from YAML with new fields."""
+        known_dir = temp_dir / "known_people"
+        known_dir.mkdir()
+
+        yaml_content = f"""
+watch_dirs:
+  - /test/dir
+
+known_people_dir: {known_dir}
+
+recognition:
+  backend: face_recognition
+  tolerance: 0.52
+
+known_refresh:
+  enabled: true
+  interval_days: 30
+  target_score: 0.70
+
+alerting:
+  enabled: true
+  recipients:
+    - user@example.com
+  batch_interval_minutes: 120
+  smtp:
+    host: smtp.gmail.com
+    port: 587
+    username: alerts@example.com
+    password: secret
+    sender_email: alerts@example.com
+"""
+
+        yaml_path = temp_dir / "config.yaml"
+        yaml_path.write_text(yaml_content)
+
+        settings = Settings.from_yaml(yaml_path)
+
+        # Verify refresh settings
+        assert settings.known_refresh.enabled is True
+        assert settings.known_refresh.interval_days == 30
+        assert settings.known_refresh.target_score == 0.70
+
+        # Verify alerting settings
+        assert settings.alerting.enabled is True
+        assert settings.alerting.recipients == ["user@example.com"]
+        assert settings.alerting.batch_interval_minutes == 120
+        assert settings.alerting.smtp.host == "smtp.gmail.com"
