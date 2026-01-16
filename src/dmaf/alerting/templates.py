@@ -3,7 +3,7 @@ Email content templates for alerts.
 """
 
 
-def format_borderline_alert(events: list[dict]) -> tuple[str, str]:
+def format_borderline_alert(events: list[dict]) -> tuple[str, str | None]:
     """
     Format borderline recognition events into email content.
 
@@ -16,7 +16,7 @@ def format_borderline_alert(events: list[dict]) -> tuple[str, str]:
             - created_ts: str (ISO format datetime)
 
     Returns:
-        Tuple of (plain_text, html) email content
+        Tuple of (plain_text, html) email content (html may be None)
     """
     count = len(events)
     threshold_example = 1.0 - events[0]["tolerance"] if events else 0.48
@@ -71,7 +71,7 @@ def format_borderline_alert(events: list[dict]) -> tuple[str, str]:
     return plain_text, html
 
 
-def format_error_alert(events: list[dict]) -> tuple[str, str]:
+def format_error_alert(events: list[dict]) -> tuple[str, str | None]:
     """
     Format error events into email content.
 
@@ -83,7 +83,7 @@ def format_error_alert(events: list[dict]) -> tuple[str, str]:
             - created_ts: str (ISO format datetime)
 
     Returns:
-        Tuple of (plain_text, html) email content
+        Tuple of (plain_text, html) email content (html may be None)
     """
     count = len(events)
 
@@ -127,7 +127,7 @@ def format_error_alert(events: list[dict]) -> tuple[str, str]:
 
 def format_combined_alert(
     borderline_events: list[dict], error_events: list[dict]
-) -> tuple[str, str]:
+) -> tuple[str, str | None]:
     """
     Format combined borderline and error events into a single email.
 
@@ -136,7 +136,7 @@ def format_combined_alert(
         error_events: List of error event dicts
 
     Returns:
-        Tuple of (plain_text, html) email content
+        Tuple of (plain_text, html) email content (html may be None)
     """
     text_lines = []
 
@@ -160,7 +160,7 @@ def format_combined_alert(
     return plain_text, html
 
 
-def format_refresh_alert(refresh_results: list[dict]) -> tuple[str, str]:
+def format_refresh_alert(refresh_results: list[dict]) -> tuple[str, str | None]:
     """
     Format known refresh events into email content.
 
@@ -173,7 +173,7 @@ def format_refresh_alert(refresh_results: list[dict]) -> tuple[str, str]:
             - target_score: float
 
     Returns:
-        Tuple of (plain_text, html) email content
+        Tuple of (plain_text, html) email content (html may be None)
     """
     count = len(refresh_results)
 

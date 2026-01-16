@@ -169,7 +169,7 @@ class TestKnownRefreshManager:
         assert len(candidates) == 0
 
     @patch("dmaf.known_refresh.Image.open")
-    @patch("dmaf.face_recognition.insightface_backend.get_face_bbox")
+    @patch("dmaf.known_refresh.get_face_bbox")
     @patch("dmaf.known_refresh.np.array")
     def test_crop_face_success(
         self,
@@ -211,7 +211,7 @@ class TestKnownRefreshManager:
         assert crop_args[3] == 360  # y2_padded = min(1000, 300 + 60)
 
     @patch("dmaf.known_refresh.Image.open")
-    @patch("dmaf.face_recognition.insightface_backend.get_face_bbox")
+    @patch("dmaf.known_refresh.get_face_bbox")
     def test_crop_face_no_face_detected(
         self, mock_get_bbox, mock_image_open, mock_db, refresh_config, known_people_dir
     ):
@@ -440,7 +440,7 @@ class TestKnownRefreshManager:
         assert len(parts) == 4  # ["refresh", "YYYYMMDD", "HHMMSS", "0.67.jpg"]
 
     @patch("dmaf.known_refresh.Image.open")
-    @patch("dmaf.face_recognition.insightface_backend.get_face_bbox")
+    @patch("dmaf.known_refresh.get_face_bbox")
     @patch("dmaf.known_refresh.np.array")
     def test_crop_face_respects_image_boundaries(
         self,

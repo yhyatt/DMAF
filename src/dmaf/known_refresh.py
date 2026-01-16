@@ -16,6 +16,12 @@ from PIL import Image
 from dmaf.config import KnownRefreshSettings
 from dmaf.database import Database
 
+# Import face detection function (optional dependency)
+try:
+    from dmaf.face_recognition.insightface_backend import get_face_bbox
+except ImportError:
+    get_face_bbox = None  # type: ignore
+
 logger = logging.getLogger(__name__)
 
 
@@ -141,8 +147,9 @@ class KnownRefreshManager:
 
             # Get face bounding box
             if self.backend_name == "insightface":
-                from dmaf.face_recognition.insightface_backend import get_face_bbox
-
+                if get_face_bbox is None:
+                    logger.error("insightface backend not available")
+                    return None
                 bbox = get_face_bbox(img_rgb)
             else:
                 # dlib backend doesn't have get_face_bbox yet
