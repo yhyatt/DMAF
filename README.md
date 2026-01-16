@@ -18,29 +18,26 @@
   <a href="https://github.com/yhyatt/DMAF/actions/workflows/ci.yml">
     <img src="https://img.shields.io/github/actions/workflow/status/yhyatt/DMAF/ci.yml?branch=main&style=for-the-badge&logo=github&label=CI" alt="CI Status"/>
   </a>
-  <a href="https://codecov.io/gh/yhyatt/DMAF">
-    <img src="https://img.shields.io/codecov/c/github/yhyatt/DMAF?style=for-the-badge&logo=codecov&label=Coverage" alt="Coverage"/>
-  </a>
-  <a href="https://pypi.org/project/dmaf/">
-    <img src="https://img.shields.io/pypi/v/dmaf?style=for-the-badge&logo=pypi&logoColor=white&label=PyPI" alt="PyPI Version"/>
-  </a>
   <a href="https://github.com/yhyatt/DMAF/blob/main/LICENSE">
     <img src="https://img.shields.io/github/license/yhyatt/DMAF?style=for-the-badge" alt="License"/>
+  </a>
+  <a href="https://github.com/yhyatt/DMAF">
+    <img src="https://img.shields.io/badge/Python-3.10%2B-blue?style=for-the-badge&logo=python&logoColor=white" alt="Python Version"/>
   </a>
 </p>
 
 <p align="center">
-  <a href="https://img.shields.io/pypi/pyversions/dmaf?style=for-the-badge&logo=python&logoColor=white">
-    <img src="https://img.shields.io/pypi/pyversions/dmaf?style=for-the-badge&logo=python&logoColor=white" alt="Python Versions"/>
-  </a>
   <a href="https://github.com/yhyatt/DMAF/stargazers">
     <img src="https://img.shields.io/github/stars/yhyatt/DMAF?style=for-the-badge&logo=github" alt="GitHub Stars"/>
   </a>
   <a href="https://github.com/yhyatt/DMAF/issues">
     <img src="https://img.shields.io/github/issues/yhyatt/DMAF?style=for-the-badge&logo=github" alt="GitHub Issues"/>
   </a>
-  <a href="https://github.com/yhyatt/DMAF">
+  <a href="https://github.com/yhyatt/DMAF/commits/main">
     <img src="https://img.shields.io/github/last-commit/yhyatt/DMAF?style=for-the-badge&logo=git&logoColor=white" alt="Last Commit"/>
+  </a>
+  <a href="https://github.com/yhyatt/DMAF">
+    <img src="https://img.shields.io/github/repo-size/yhyatt/DMAF?style=for-the-badge&logo=github" alt="Repo Size"/>
   </a>
 </p>
 
