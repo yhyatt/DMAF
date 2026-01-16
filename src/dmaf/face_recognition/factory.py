@@ -11,7 +11,7 @@ import hashlib
 import logging
 from pathlib import Path
 from types import ModuleType
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 
@@ -84,7 +84,11 @@ def _make_cache_key(
     Returns:
         Cache key string
     """
-    return f"{backend_name}_mfs{min_face_size}_aug{int(enable_augmentation)}_detknown{det_thresh_known:.2f}_best{int(return_best_only)}_perfile{int(return_per_file)}"
+    return (
+        f"{backend_name}_mfs{min_face_size}_aug{int(enable_augmentation)}"
+        f"_detknown{det_thresh_known:.2f}_best{int(return_best_only)}"
+        f"_perfile{int(return_per_file)}"
+    )
 
 
 def load_known_faces(
@@ -108,13 +112,17 @@ def load_known_faces(
                            Applies conservative augmentation (flip + brightness ±20%)
                            to improve TPR from 77.5% to 82.5% while maintaining 0.0% FPR.
                            Only applies to insightface backend.
-        det_thresh_known: Detection confidence threshold for known_people images (0.0-1.0).
-                         Lower than det_thresh for test images because we assume faces exist in training data.
+        det_thresh_known: Detection confidence threshold for known_people images
+                         (0.0-1.0). Lower than det_thresh for test images because
+                         we assume faces exist in training data.
                          Only applies to insightface backend.
-        return_best_only: Use only highest confidence face per image (handles multi-person photos)
+        return_best_only: Use only highest confidence face per image
+                         (handles multi-person photos)
         return_per_file: Return per-file metadata for LOOCV filtering (default: False).
-                        When True, returns {person: [(filename, [embeddings])]} instead of {person: [embeddings]}.
-                        Useful for LOOCV where you need to exclude specific files from training set.
+                        When True, returns {person: [(filename, [embeddings])]}
+                        instead of {person: [embeddings]}.
+                        Useful for LOOCV where you need to exclude specific files
+                        from training set.
         db: Optional Database instance for caching embeddings (speeds up startup 100x)
 
     Returns:
@@ -131,8 +139,8 @@ def load_known_faces(
             person2/
                 image1.jpg
     """
-    # Try cache if database provided
-    if db is not None and hasattr(db, "get_cached_embeddings"):
+    # Try cache if database provided (cache only supports flat format)
+    if db is not None and hasattr(db, "get_cached_embeddings") and not return_per_file:
         cache_key = _make_cache_key(
             backend_name,
             min_face_size,
@@ -146,7 +154,14 @@ def load_known_faces(
         cached = db.get_cached_embeddings(cache_key, files_hash)
         if cached is not None:
             logger.info("Loaded face embeddings from cache (instant)")
-            return cached
+            # Cast to the return type since we know cache only stores flat format
+            return cast(
+                tuple[
+                    dict[str, list[np.ndarray]] | dict[str, list[tuple[str, list[np.ndarray]]]],
+                    list[str],
+                ],
+                cached,
+            )
 
         logger.info("Cache miss - computing embeddings...")
 
@@ -154,7 +169,8 @@ def load_known_faces(
 
     # Compute embeddings (slow)
     if backend_name == "insightface":
-        # InsightFace backend supports augmentation, det_thresh_known, return_best_only, and return_per_file
+        # InsightFace backend supports augmentation, det_thresh_known,
+        # return_best_only, and return_per_file
         result: tuple[
             dict[str, list[np.ndarray]] | dict[str, list[tuple[str, list[np.ndarray]]]], list[str]
         ] = backend.load_known_faces(
@@ -172,8 +188,8 @@ def load_known_faces(
         if return_per_file:
             raise ValueError(f"{backend_name} backend does not support return_per_file mode")
 
-    # Save to cache if database provided
-    if db is not None and hasattr(db, "save_cached_embeddings"):
+    # Save to cache if database provided (cache only supports flat format)
+    if db is not None and hasattr(db, "save_cached_embeddings") and not return_per_file:
         cache_key = _make_cache_key(
             backend_name,
             min_face_size,

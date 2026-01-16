@@ -144,7 +144,8 @@ class Database:
 
             conn = self._get_conn()
             conn.execute(
-                "INSERT OR REPLACE INTO embedding_cache(cache_key, files_hash, encodings_blob, people_json) "
+                "INSERT OR REPLACE INTO embedding_cache("
+                "cache_key, files_hash, encodings_blob, people_json) "
                 "VALUES(?,?,?,?)",
                 (cache_key, files_hash, encodings_blob, people_json),
             )

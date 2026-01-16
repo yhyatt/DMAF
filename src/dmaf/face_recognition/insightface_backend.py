@@ -98,9 +98,11 @@ def load_known_faces(
         enable_augmentation: Apply conservative augmentation (flip + brightness ±20%).
                            Default True. Improves TPR from 77.5% to 82.5% while
                            maintaining 0.0% FPR.
-        det_thresh_known: Detection confidence threshold for known_people images (0.0-1.0).
-                         Lower than det_thresh for test images because we assume faces exist.
-        return_best_only: If True, use only highest confidence face per image (handles multi-person photos)
+        det_thresh_known: Detection confidence threshold for known_people images
+                         (0.0-1.0). Lower than det_thresh for test images because
+                         we assume faces exist.
+        return_best_only: If True, use only highest confidence face per image
+                         (handles multi-person photos)
         return_per_file: If True, return per-file metadata {person: [(filename, [embeddings])]}
                         instead of flattened {person: [embeddings]}. Useful for LOOCV.
 

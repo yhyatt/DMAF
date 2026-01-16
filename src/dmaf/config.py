@@ -32,9 +32,14 @@ class RecognitionSettings(BaseModel):
         default=0.4,
         ge=0.0,
         le=1.0,
-        description="InsightFace detection confidence threshold for test images (lower = more faces detected). "
-        "0.4 = balanced (catches difficult angles), 0.5 = strict (obvious faces only), "
-        "0.35 = permissive (may detect non-faces). Ignored for face_recognition backend.",
+        description=(
+            "InsightFace detection confidence threshold for test images "
+            "(lower = more faces detected). "
+            "0.4 = balanced (catches difficult angles), "
+            "0.5 = strict (obvious faces only), "
+            "0.35 = permissive (may detect non-faces). "
+            "Ignored for face_recognition backend."
+        ),
     )
     det_thresh_known: float = Field(
         default=0.3,
