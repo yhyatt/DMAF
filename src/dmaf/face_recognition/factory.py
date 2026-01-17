@@ -5,6 +5,7 @@ Factory module that provides a unified interface to different face recognition b
 Supported backends:
 - 'face_recognition': dlib-based face recognition (CPU-optimized)
 - 'insightface': Deep learning-based face recognition (more accurate)
+- 'auraface': Apache 2.0 licensed face recognition (fully commercial use)
 """
 
 import hashlib
@@ -106,12 +107,12 @@ def load_known_faces(
 
     Args:
         known_root: Path to directory containing subdirectories for each person
-        backend_name: Which backend to use ('face_recognition' or 'insightface')
+        backend_name: Which backend to use ('face_recognition', 'insightface', or 'auraface')
         min_face_size: Minimum face size in pixels to detect
-        enable_augmentation: Enable augmentation for insightface backend (default: True).
+        enable_augmentation: Enable augmentation for insightface/auraface backends (default: True).
                            Applies conservative augmentation (flip + brightness ±20%)
                            to improve TPR from 77.5% to 82.5% while maintaining 0.0% FPR.
-                           Only applies to insightface backend.
+                           Only applies to insightface and auraface backends.
         det_thresh_known: Detection confidence threshold for known_people images
                          (0.0-1.0). Lower than det_thresh for test images because
                          we assume faces exist in training data.
@@ -168,8 +169,8 @@ def load_known_faces(
     backend = _get_backend(backend_name)
 
     # Compute embeddings (slow)
-    if backend_name == "insightface":
-        # InsightFace backend supports augmentation, det_thresh_known,
+    if backend_name in ("insightface", "auraface"):
+        # InsightFace and AuraFace backends support augmentation, det_thresh_known,
         # return_best_only, and return_per_file
         result: tuple[
             dict[str, list[np.ndarray]] | dict[str, list[tuple[str, list[np.ndarray]]]], list[str]
@@ -221,13 +222,13 @@ def best_match(
     Args:
         known: Dictionary mapping person names to face encodings
         img_rgb: Image as numpy array in RGB format (from PIL)
-        backend_name: Which backend to use ('face_recognition' or 'insightface')
+        backend_name: Which backend to use ('face_recognition', 'insightface', or 'auraface')
         tolerance: Matching threshold (lower = stricter)
                   - For face_recognition: typically 0.5-0.6
-                  - For insightface: typically 0.3-0.5 (cosine distance)
+                  - For insightface/auraface: typically 0.3-0.5 (cosine distance)
         min_face_size: Minimum face size in pixels
-        det_thresh: Detection confidence threshold (0.0-1.0). Only applies to insightface.
-        return_best_only: If True, use only highest confidence face (insightface only)
+        det_thresh: Detection confidence threshold (0.0-1.0). Only applies to insightface/auraface.
+        return_best_only: If True, use only highest confidence face (insightface/auraface only)
         return_scores: If True, return similarity scores for all known people
 
     Returns:
@@ -243,7 +244,7 @@ def best_match(
     """
     backend = _get_backend(backend_name)
 
-    if backend_name == "insightface":
+    if backend_name in ("insightface", "auraface"):
         result: tuple[bool, list[str]] | tuple[bool, list[str], dict[str, float]] = (
             backend.best_match(
                 known,
@@ -284,10 +285,14 @@ def _get_backend(backend_name: str) -> ModuleType:
         from dmaf.face_recognition import insightface_backend
 
         backend = insightface_backend
+    elif backend_name == "auraface":
+        from dmaf.face_recognition import auraface_backend
+
+        backend = auraface_backend
     else:
         raise ValueError(
             f"Unknown backend: {backend_name}. "
-            f"Supported backends: 'face_recognition', 'insightface'"
+            f"Supported backends: 'face_recognition', 'insightface', 'auraface'"
         )
 
     _backend_cache[backend_name] = backend

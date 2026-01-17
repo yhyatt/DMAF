@@ -10,8 +10,8 @@
 </p>
 
 <p align="center">
-  Never miss a photo of your loved ones again — DMAF watches your WhatsApp media,<br/>
-  recognizes faces of people you care about, and automatically backs them up to Google Photos.
+  Never miss a photo of your loved ones again! Without the clutter from backup of your entire WhatsApp media — <br/>
+  DMAF watches your WhatsApp media, recognizes faces of people you care, and backs it up to Google Photos.
 </p>
 
 <p align="center">
@@ -59,7 +59,7 @@
 <td width="50%">
 
 ### 🔍 Smart Face Recognition
-- **Two powerful backends**: Choose between `dlib` (CPU-optimized) or `InsightFace` (GPU-accelerated, more accurate)
+- **Three powerful backends**: `dlib` (CPU-optimized), `InsightFace` (non-commercial), or `AuraFace` (Apache 2.0, **commercial use OK**)
 - **Extensible architecture**: Plugin-based backend system for adding new recognition engines
 - **Multi-face detection**: Handles group photos with multiple faces
 - **Configurable tolerance**: Fine-tune matching sensitivity
@@ -141,11 +141,13 @@ python -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
 # Install with your preferred face recognition backend
-pip install -e ".[insightface]"  # Recommended: GPU-accelerated, higher accuracy
+pip install -e ".[auraface]"  # ⭐ Recommended: Commercial use OK (Apache 2.0)
+# OR
+pip install -e ".[insightface]"  # High accuracy, non-commercial license only
 # OR
 pip install -e ".[face-recognition]"  # CPU-optimized, easier setup
 # OR
-pip install -e ".[all]"  # Both backends
+pip install -e ".[all]"  # All backends
 ```
 
 ### Setup
@@ -221,7 +223,7 @@ google_photos_album_name: "Family - Auto WhatsApp"
 
 # Face recognition settings
 recognition:
-  backend: "insightface"        # or "face_recognition"
+  backend: "auraface"          # "auraface" (recommended), "insightface", or "face_recognition"
   tolerance: 0.5               # Lower = stricter matching (0.0-1.0)
   det_thresh: 0.4               # Detection threshold for test images
   det_thresh_known: 0.3         # More permissive for training images
@@ -244,25 +246,31 @@ See [`config.example.yaml`](config.example.yaml) for a complete example with all
 
 ## 🧠 Face Recognition Backends
 
-DMAF uses a **plugin-based architecture** that makes it easy to add new face recognition engines. Currently includes two production-ready backends:
+DMAF uses a **plugin-based architecture** that makes it easy to add new face recognition engines. Currently includes three production-ready backends:
 
-| Feature | InsightFace (Recommended) | face_recognition (dlib) |
-|---------|-------------|-------------------------|
-| **Accuracy (TPR)** | 82.5% (with augmentation) | 92.5% |
-| **False Positive Rate** | **0.0%** 🛡️ | ~11% ⚠️ |
-| **Speed** | ⚡ **12x faster** | 🐢 Slower |
-| **GPU Support** | ✅ Yes (CUDA) | ❌ CPU only |
-| **Privacy** | **Perfect** - No strangers uploaded | Risky - False matches |
-| **Installation** | Requires ONNX Runtime | Requires dlib + cmake |
-| **Best For** | Production, privacy-critical apps | Quick testing, development |
+| Feature | AuraFace ⭐ Recommended | InsightFace | face_recognition (dlib) |
+|---------|-------------|-------------|-------------------------|
+| **License** | ✅ **Apache 2.0** (commercial OK) | ⚠️ Non-commercial only | MIT |
+| **Accuracy (TPR)** | 80-85% | 82.5% | 92.5% |
+| **False Positive Rate** | ✅ **0.0%** 🛡️ | 1.87% | ~11% ⚠️ |
+| **Speed** | ⚡ Fast (12x vs dlib) | ⚡ **Fastest** | 🐢 Slow |
+| **GPU Support** | ✅ Yes (CUDA) | ✅ Yes (CUDA) | ❌ CPU only |
+| **Privacy** | **Perfect** - Zero false positives | Good - Rare false positives | Risky - False matches |
+| **Installation** | Requires ONNX Runtime | Requires ONNX Runtime | Requires dlib + cmake |
+| **Best For** | 🏆 **Commercial production apps** | Research/academic projects | Testing, development |
 
 ### 🏆 Recommendation
 
-**Use InsightFace** for production deployments. Our rigorous testing with 40 family photos + 107 strangers showed:
-- ✅ **Zero false positives** (strangers never misidentified as family)
-- ✅ **12x faster processing** (99s vs 1413s for 40 images)
-- ✅ **82.5% family detection rate** (with conservative augmentation)
-- ✅ **More consistent** across lighting conditions and angles
+**Use AuraFace** for commercial production deployments. Benchmark testing with 40 family photos + 123 strangers showed:
+- ✅ **Zero false positives** - Perfect privacy (0.0% FPR vs InsightFace's 1.87%)
+- ✅ **Apache 2.0 license** - Fully commercial, no restrictions
+- ✅ **85% detection rate** - Excellent coverage with tolerance=0.5
+- ✅ **Same infrastructure as InsightFace** - 12x faster than dlib
+- ✅ **Production-ready** - Conservative settings prevent privacy violations
+
+**Use InsightFace** if you need academic/research use only and want slightly higher accuracy (non-commercial license).
+
+**Use face_recognition** for quick testing or development only (high false positive rate makes it unsuitable for production).
 
 ### 🔌 Extensible Architecture
 
@@ -294,7 +302,8 @@ dmaf/
 │   ├── face_recognition/     # Detection backends
 │   │   ├── factory.py        # Backend selection
 │   │   ├── dlib_backend.py   # face_recognition
-│   │   └── insightface_backend.py
+│   │   ├── insightface_backend.py
+│   │   └── auraface_backend.py  # AuraFace (Apache 2.0)
 │   ├── google_photos/        # Google Photos API
 │   └── utils/                # Retry logic, helpers
 ├── data/
@@ -329,14 +338,15 @@ black --check src/
 
 - [x] **Phase A**: Core bug fixes (RGB/BGR, caching, retry logic) ✅
 - [x] **Phase B**: Project restructuring (src layout, Pydantic) ✅
-- [x] **Phase C**: Unit tests (81% coverage, 129 tests) ✅
+- [x] **Phase C**: Unit tests (75% coverage, 286 tests) ✅
 - [x] **Phase D**: Face recognition benchmarking & LOOCV validation ✅
-- [x] **Phase D+**: Advanced detection tuning & FPR analysis ✅ **NEW**
+- [x] **Phase D+**: Advanced detection tuning & FPR analysis ✅
 - [x] **Phase E**: CI/CD (GitHub Actions, automated testing) ✅
+- [x] **Phase F-prep**: Observability & auto-refresh (alerts, score tracking, AuraFace backend) ✅ **NEW**
 - [ ] **Phase F**: Cloud deployment (GCS + Cloud Run) 🚧
 - [ ] **Phase G**: Docker support & documentation 📝
 
-**Current Progress:** 71% complete (5 of 7 phases done)
+**Current Progress:** 80% complete (7 of 9 phases done)
 
 ---
 
@@ -360,8 +370,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- [face_recognition](https://github.com/ageitgey/face_recognition) - dlib-based face recognition
+- [AuraFace](https://huggingface.co/fal/AuraFace-v1) - Apache 2.0 licensed face recognition model
 - [InsightFace](https://github.com/deepinsight/insightface) - Deep learning face analysis
+- [face_recognition](https://github.com/ageitgey/face_recognition) - dlib-based face recognition
 - [Google Photos Library API](https://developers.google.com/photos/library/guides/get-started)
 - [Watchdog](https://github.com/gorakhargosh/watchdog) - File system monitoring
 

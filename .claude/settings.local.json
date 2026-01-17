@@ -50,7 +50,10 @@
       "Bash(python -m pytest tests/ -v --tb=short)",
       "Bash(python -m pytest:*)",
       "Bash(python -m py_compile:*)",
-      "Bash(python scripts/debug_missed_detections.py:*)"
+      "Bash(python scripts/debug_missed_detections.py:*)",
+      "WebFetch(domain:blog.nashtechglobal.com)",
+      "Bash(python scripts/benchmark_backends.py:*)",
+      "Bash(pre-commit run:*)"
     ]
   },
   "hooks": {

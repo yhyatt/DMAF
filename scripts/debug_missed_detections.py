@@ -41,9 +41,12 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 from dmaf.config import Settings
 from dmaf.database import get_database
 from dmaf.face_recognition import factory
-from dmaf.face_recognition.insightface_backend import _cosine_sim, _get_app
 
 logger = logging.getLogger(__name__)
+
+# Backend-specific imports will be done at runtime based on config
+_cosine_sim = None
+_get_app = None
 
 
 def compute_all_similarities(
@@ -300,6 +303,9 @@ def test_unknown_people(
             'false_positive_details': list
         }
     """
+    # Declare globals for backend-specific functions
+    global _get_app, _cosine_sim
+
     if not unknown_people_dir.exists():
         print(f"⚠️  Unknown people directory not found: {unknown_people_dir}")
         print("   Skipping false positive rate analysis")
@@ -350,7 +356,14 @@ def test_unknown_people(
         max_score = 0.0
         max_score_person = None
 
-        if settings.recognition.backend == "insightface":
+        if settings.recognition.backend in ("insightface", "auraface"):
+            # Import backend-specific functions if not already imported
+            if _get_app is None:
+                if settings.recognition.backend == "insightface":
+                    from dmaf.face_recognition.insightface_backend import _cosine_sim, _get_app
+                else:  # auraface
+                    from dmaf.face_recognition.auraface_backend import _cosine_sim, _get_app
+
             # Run detection and compute similarities to show closest match
             app = _get_app(det_thresh=det_thresh_test)
             faces = app.get(img_np)
@@ -394,7 +407,7 @@ def test_unknown_people(
             )
 
             # Save visualization for false positives ONLY
-            if output_dir and settings.recognition.backend == "insightface":
+            if output_dir and settings.recognition.backend in ("insightface", "auraface"):
                 fp_dir = output_dir / "3_false_positives"
                 fp_dir.mkdir(parents=True, exist_ok=True)
 
@@ -540,6 +553,9 @@ def analyze_missed_detections(
     Returns:
         Dictionary of known people encodings (for Phase 3 FPR testing)
     """
+    # Declare globals for backend-specific functions
+    global _get_app, _cosine_sim
+
     # Use config values unless overridden
     det_thresh_known = det_thresh_known or settings.recognition.det_thresh_known
     det_thresh_test = det_thresh_test or settings.recognition.det_thresh
@@ -549,7 +565,9 @@ def analyze_missed_detections(
     print("=" * 80)
     print(f"Config file: {settings}")
     print(f"Backend: {settings.recognition.backend}")
-    print(f"Augmentation: {'Enabled' if settings.recognition.backend == 'insightface' else 'N/A'}")
+    print(
+        f"Augmentation: {'Enabled' if settings.recognition.backend in ('insightface', 'auraface') else 'N/A'}"
+    )
     print(f"Tolerance: {settings.recognition.tolerance}")
     print(f"Min face size: {settings.recognition.min_face_size_pixels}px")
     print(f"Detection threshold (known faces): {det_thresh_known}")
@@ -587,10 +605,16 @@ def analyze_missed_detections(
     print(f"✓ Loaded embeddings for {len(all_person_embeddings_with_paths)} people")
 
     # Visualize detections in known_people images if output directory specified
-    if output_dir and settings.recognition.backend == "insightface":
+    if output_dir and settings.recognition.backend in ("insightface", "auraface"):
         detection_dir = output_dir / "1_detection"
         detection_dir.mkdir(parents=True, exist_ok=True)
         print(f"\nVisualizing detections (saved to {detection_dir})...")
+
+        # Import backend-specific functions
+        if settings.recognition.backend == "insightface":
+            from dmaf.face_recognition.insightface_backend import _get_app
+        else:  # auraface
+            from dmaf.face_recognition.auraface_backend import _get_app
 
         app = _get_app(det_thresh=det_thresh_known)
         for person_name, file_list in all_person_embeddings_with_paths.items():
@@ -697,9 +721,16 @@ def analyze_missed_detections(
             )
 
             # Visualize recognition if output directory specified
-            if output_dir and settings.recognition.backend == "insightface":
+            if output_dir and settings.recognition.backend in ("insightface", "auraface"):
                 recognition_dir = output_dir / "2_recognition" / person_name
                 recognition_dir.mkdir(parents=True, exist_ok=True)
+
+                # Import backend-specific functions if not already imported
+                if _get_app is None:
+                    if settings.recognition.backend == "insightface":
+                        from dmaf.face_recognition.insightface_backend import _get_app
+                    else:  # auraface
+                        from dmaf.face_recognition.auraface_backend import _get_app
 
                 # Run detection to get face objects for visualization
                 app = _get_app(det_thresh=det_thresh_test)
@@ -744,7 +775,17 @@ def analyze_missed_detections(
                 max_score = 0.0
                 max_score_person = None
 
-                if settings.recognition.backend == "insightface":
+                if settings.recognition.backend in ("insightface", "auraface"):
+                    # Import backend-specific functions if not already imported
+                    if _get_app is None:
+                        if settings.recognition.backend == "insightface":
+                            from dmaf.face_recognition.insightface_backend import (
+                                _cosine_sim,
+                                _get_app,
+                            )
+                        else:  # auraface
+                            from dmaf.face_recognition.auraface_backend import _cosine_sim, _get_app
+
                     app = _get_app(det_thresh=det_thresh_test)
                     faces = app.get(test_img_np)
 
@@ -796,7 +837,17 @@ def analyze_missed_detections(
                     print(f"  ✗ {test_img_path.name} - NO FACE DETECTED")
             else:
                 # Matched wrong person (rare) - also show similarity scores
-                if settings.recognition.backend == "insightface":
+                if settings.recognition.backend in ("insightface", "auraface"):
+                    # Import backend-specific functions if not already imported
+                    if _get_app is None:
+                        if settings.recognition.backend == "insightface":
+                            from dmaf.face_recognition.insightface_backend import (
+                                _cosine_sim,
+                                _get_app,
+                            )
+                        else:  # auraface
+                            from dmaf.face_recognition.auraface_backend import _cosine_sim, _get_app
+
                     app = _get_app(det_thresh=det_thresh_test)
                     faces = app.get(test_img_np)
 
@@ -886,8 +937,11 @@ def analyze_missed_detections(
         print("1. Lower detection thresholds:")
         print("   python scripts/debug_missed_detections.py --det-thresh-known 0.3")
         print()
-        print("2. Test detection parameters (InsightFace):")
+        print("2. Test detection parameters (InsightFace/AuraFace):")
+        print("   # For InsightFace:")
         print("   from dmaf.face_recognition.insightface_backend import _get_app")
+        print("   # For AuraFace:")
+        print("   # from dmaf.face_recognition.auraface_backend import _get_app")
         print("   from PIL import Image")
         print("   import numpy as np")
         print()

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Benchmark face recognition backends (face_recognition vs insightface).
+Benchmark face recognition backends (face_recognition, insightface, auraface).
 
 Compares accuracy (TPR, FPR) and performance (load time, encoding speed)
 using Leave-One-Out Cross-Validation on real test data.
@@ -36,7 +36,7 @@ def benchmark_loocv_accuracy(
 
     Args:
         known_people_path: Path to known_people directory
-        backend_name: 'face_recognition' or 'insightface'
+        backend_name: 'face_recognition', 'insightface', or 'auraface'
         min_face_size: Minimum face size in pixels
 
     Returns:
@@ -48,7 +48,9 @@ def benchmark_loocv_accuracy(
         }
     """
     results = {"correct": 0, "incorrect": 0, "total": 0}
-    tolerance = 0.55 if backend_name == "face_recognition" else 0.42
+    tolerance = (
+        0.55 if backend_name == "face_recognition" else 0.42
+    )  # InsightFace/AuraFace use 0.42
 
     person_dirs = [d for d in known_people_path.iterdir() if d.is_dir()]
 
@@ -163,7 +165,7 @@ def benchmark_fpr(
     Args:
         known_people_path: Path to known_people directory
         unknown_people_path: Path to unknown_people directory
-        backend_name: 'face_recognition' or 'insightface'
+        backend_name: 'face_recognition', 'insightface', or 'auraface'
         min_face_size: Minimum face size in pixels
 
     Returns:
@@ -185,7 +187,9 @@ def benchmark_fpr(
     )
 
     results = {"false_positives": 0, "true_negatives": 0, "no_face": 0, "total": 0}
-    tolerance = 0.55 if backend_name == "face_recognition" else 0.42
+    tolerance = (
+        0.55 if backend_name == "face_recognition" else 0.42
+    )  # InsightFace/AuraFace use 0.42
 
     # Test each unknown person image
     unknown_images = list(unknown_people_path.glob("*.jpg")) + list(
@@ -364,9 +368,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--backends",
         nargs="+",
-        choices=["face_recognition", "insightface"],
-        default=["face_recognition", "insightface"],
-        help="Backends to benchmark (default: both)",
+        choices=["face_recognition", "insightface", "auraface"],
+        default=["face_recognition", "insightface", "auraface"],
+        help="Backends to benchmark (default: all)",
     )
     parser.add_argument(
         "--min-face-size",

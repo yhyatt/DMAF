@@ -17,7 +17,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class RecognitionSettings(BaseModel):
     """Face recognition configuration."""
 
-    backend: Literal["face_recognition", "insightface"] = Field(
+    backend: Literal["face_recognition", "insightface", "auraface"] = Field(
         default="face_recognition",
         description="Face recognition backend to use",
     )

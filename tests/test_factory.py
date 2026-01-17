@@ -29,6 +29,13 @@ class TestGetBackend:
             assert backend is not None
             assert "insightface" in factory._backend_cache
 
+    def test_get_auraface_backend(self):
+        """Test loading auraface backend."""
+        with patch.dict("sys.modules", {"dmaf.face_recognition.auraface_backend": MagicMock()}):
+            backend = factory._get_backend("auraface")
+            assert backend is not None
+            assert "auraface" in factory._backend_cache
+
     def test_invalid_backend_raises_error(self):
         """Test that invalid backend name raises ValueError."""
         with pytest.raises(ValueError, match="Unknown backend: invalid"):
@@ -93,6 +100,27 @@ class TestLoadKnownFaces:
             )
 
             # InsightFace backend gets all augmentation/detection parameters
+            mock_backend.load_known_faces.assert_called_once_with(
+                "/path/to/known_people", 100, True, 0.3, False, False
+            )
+
+            assert encodings == mock_encodings
+            assert people == mock_people
+
+    def test_load_with_auraface_backend(self):
+        """Test loading known faces with auraface backend."""
+        # Mock backend
+        mock_backend = MagicMock()
+        mock_encodings = {"charlie": [np.array([7, 8, 9])]}
+        mock_people = ["charlie"]
+        mock_backend.load_known_faces.return_value = (mock_encodings, mock_people)
+
+        with patch("dmaf.face_recognition.factory._get_backend", return_value=mock_backend):
+            encodings, people = factory.load_known_faces(
+                "/path/to/known_people", backend_name="auraface", min_face_size=100
+            )
+
+            # AuraFace backend gets all augmentation/detection parameters (same as InsightFace)
             mock_backend.load_known_faces.assert_called_once_with(
                 "/path/to/known_people", 100, True, 0.3, False, False
             )
@@ -185,6 +213,26 @@ class TestBestMatch:
 
             assert matched is True
             assert names == ["bob", "charlie"]
+
+    def test_best_match_with_auraface(self):
+        """Test best_match with auraface backend."""
+        mock_backend = MagicMock()
+        mock_backend.best_match.return_value = (True, ["alice", "dave"])
+
+        known_faces = {"alice": [np.array([1, 2, 3])], "dave": [np.array([7, 8, 9])]}
+        test_image = np.zeros((200, 200, 3), dtype=np.uint8)
+
+        with patch("dmaf.face_recognition.factory._get_backend", return_value=mock_backend):
+            matched, names = factory.best_match(
+                known_faces,
+                test_image,
+                backend_name="auraface",
+                tolerance=0.4,
+                min_face_size=100,
+            )
+
+            assert matched is True
+            assert names == ["alice", "dave"]
 
     def test_best_match_no_match(self):
         """Test best_match when no faces match."""

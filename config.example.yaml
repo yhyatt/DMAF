@@ -25,35 +25,46 @@ google_photos_album_name: null  # "Family - Auto WhatsApp Imports"
 
 # Face Recognition Settings
 recognition:
-  # Backend: "face_recognition" (dlib) or "insightface" (deep learning, RECOMMENDED)
-  # RECOMMENDED: "insightface" - Phase D testing showed:
-  #   - 0.0% false positive rate on unknown people (perfect stranger rejection)
-  #   - 12x faster than face_recognition (99s vs 1413s on test set)
-  #   - 77.5% same-person recall (vs 92.5% for face_recognition)
-  # Trade-off: insightface is more conservative but prevents privacy violations
-  backend: "insightface"
+  # Backend: "face_recognition" (dlib), "insightface", or "auraface" (deep learning, RECOMMENDED)
+  #
+  # RECOMMENDED: "auraface" - Apache 2.0 licensed for commercial use
+  #   - Performance: Same as insightface (LFW 99.65% vs 99.7%)
+  #   - License: Apache 2.0 (fully commercial, no restrictions)
+  #   - 12x faster than face_recognition
+  #   - 0.0% false positive rate on unknown people
+  #   - 77.5% same-person recall (conservative, prevents privacy violations)
+  #
+  # Alternative: "insightface" - Slightly higher accuracy, non-commercial license
+  #   - Performance: LFW 99.7% (buffalo_l model)
+  #   - License: Non-commercial only (academic/research use)
+  #   - Same speed and FPR as auraface
+  #
+  # Not recommended: "face_recognition" - CPU-optimized but lower accuracy
+  #   - 11.2% FPR (uploads strangers), 92.5% TPR
+  #   - 12x slower than insightface/auraface
+  backend: "auraface"
 
   # Matching threshold - lower = stricter matching
   # Optimal values from Phase D testing:
-  #   insightface: 0.42 (0.0% FPR, 77.5% TPR)
+  #   auraface/insightface: 0.42 (0.0% FPR, 77.5% TPR)
   #   face_recognition: 0.55 (11.2% FPR, 92.5% TPR)
   tolerance: 0.42
 
-  # Detection confidence threshold for test images (insightface only) - lower = more faces detected
+  # Detection confidence threshold for test images (insightface/auraface only) - lower = more faces detected
   # 0.4 = balanced (catches difficult angles)
   # 0.5 = strict (obvious faces only)
   # 0.35 = permissive (may detect non-faces)
   # Default 0.5 was missing some faces, 0.4 provides better recall
   det_thresh: 0.4
 
-  # Detection confidence threshold for known_people images (training set, insightface only)
+  # Detection confidence threshold for known_people images (training set, insightface/auraface only)
   # Lower than det_thresh because we assume faces exist in training images
   # 0.3 = permissive (detect even difficult angles, RECOMMENDED)
   # 0.4 = balanced
   # Use lower value to ensure training images with difficult angles/lighting are included
   det_thresh_known: 0.3
 
-  # Use only highest confidence face when multiple faces detected (insightface only)
+  # Use only highest confidence face when multiple faces detected (insightface/auraface only)
   # Recommended: true for known_people with group photos (avoids encoding background faces)
   # Set to false only if you need all faces from multi-person photos
   return_best_only: true

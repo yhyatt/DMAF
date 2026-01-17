@@ -544,9 +544,10 @@ class TestDeleteSourceAfterUpload:
         process_fn = Mock()
         process_fn.return_value = (False, [])  # No match
 
-        # Config with delete enabled
+        # Config with delete_source_after_upload enabled, but delete_unmatched disabled
         cfg = Mock()
         cfg.delete_source_after_upload = True
+        cfg.delete_unmatched_after_processing = False  # Only delete on match
 
         handler = NewImageHandler(process_fn, db_conn, cfg)
         handler.on_match = Mock()

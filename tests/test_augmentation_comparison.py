@@ -123,31 +123,31 @@ class TestAugmentationIntegration:
         ]
 
         for strategy_name in expected_strategies:
-            assert (
-                strategy_name in AUGMENTATION_STRATEGIES
-            ), f"Strategy '{strategy_name}' not found in AUGMENTATION_STRATEGIES"
+            assert strategy_name in AUGMENTATION_STRATEGIES, (
+                f"Strategy '{strategy_name}' not found in AUGMENTATION_STRATEGIES"
+            )
 
             # Verify strategy has augmentation functions (or empty list for 'none')
             aug_fns = AUGMENTATION_STRATEGIES[strategy_name]
-            assert isinstance(
-                aug_fns, list
-            ), f"Strategy '{strategy_name}' should return a list of functions"
+            assert isinstance(aug_fns, list), (
+                f"Strategy '{strategy_name}' should return a list of functions"
+            )
 
             # Verify description is available
             description = get_strategy_description(strategy_name)
-            assert (
-                isinstance(description, str) and len(description) > 0
-            ), f"Strategy '{strategy_name}' should have a non-empty description"
+            assert isinstance(description, str) and len(description) > 0, (
+                f"Strategy '{strategy_name}' should have a non-empty description"
+            )
 
         # Verify baseline has no augmentations
-        assert (
-            len(AUGMENTATION_STRATEGIES["none"]) == 0
-        ), "Baseline strategy should have no augmentations"
+        assert len(AUGMENTATION_STRATEGIES["none"]) == 0, (
+            "Baseline strategy should have no augmentations"
+        )
 
         # Verify other strategies have augmentations
-        assert (
-            len(AUGMENTATION_STRATEGIES["flip_only"]) > 0
-        ), "flip_only strategy should have at least one augmentation"
+        assert len(AUGMENTATION_STRATEGIES["flip_only"]) > 0, (
+            "flip_only strategy should have at least one augmentation"
+        )
 
         print("\n✅ All augmentation strategies are properly defined")
         print(f"   Strategies available: {', '.join(expected_strategies)}")

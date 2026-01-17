@@ -60,8 +60,13 @@ insightface = [
     "insightface>=0.7.3",
     "onnxruntime>=1.15.0",
 ]
+auraface = [
+    "insightface>=0.7.3",
+    "onnxruntime>=1.15.0",
+    "huggingface_hub>=0.20.0",
+]
 all = [
-    "dmaf[face-recognition,insightface]",
+    "dmaf[face-recognition,insightface,auraface]",
 ]
 dev = [
     "pytest>=7.4.0",
@@ -93,6 +98,17 @@ target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.ruff.lint.per-file-ignores]
+# Scripts can be more lenient - they're development tools, not production code
+"scripts/*.py" = [
+    "E501",  # Line too long (scripts often have long print statements)
+    "E402",  # Module level import not at top (scripts manipulate sys.path)
+    "E722",  # Bare except (OK for development scripts)
+    "B007",  # Unused loop variable (OK in scripts)
+    "SIM102",  # Nested if (OK for readability in scripts)
+    "B905",  # zip without strict (Python 3.10+ feature, OK to skip)
+]
 
 [tool.black]
 line-length = 100
