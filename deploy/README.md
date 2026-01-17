@@ -108,6 +108,54 @@ gcloud secrets create dmaf-config \
 gcloud secrets list
 ```
 
+**Note on Email Alerts**: If you want to enable email notifications for borderline recognitions and errors, update your `config.yaml` with SMTP settings before creating the `dmaf-config` secret. See the [Email Alerts section](#email-alerts-configuration-optional) below for setup instructions.
+
+---
+
+## Step 2a: Email Alerts Configuration (Optional but Recommended)
+
+Email alerts notify you about borderline recognitions, processing errors, and training updates even when DMAF runs in the cloud.
+
+### Recommended: SendGrid (Free, Secure)
+
+**Why SendGrid for Cloud Deployment:**
+- ✅ Free tier: 100 emails/day (plenty for DMAF)
+- ✅ No personal email risk
+- ✅ API keys (not passwords)
+- ✅ Perfect for serverless/cloud apps
+
+**Quick Setup (5 minutes):**
+
+1. **Create SendGrid account**: [SendGrid Signup](https://signup.sendgrid.com/)
+2. **Verify sender email**: Settings → Sender Authentication → Verify Single Sender
+3. **Create API key**: Settings → API Keys → Create with "Mail Send" permission
+4. **Add to config.yaml**:
+   ```yaml
+   alerting:
+     enabled: true
+     recipients:
+       - "your-email@gmail.com"
+     batch_interval_minutes: 60
+     borderline_offset: 0.1
+     event_retention_days: 90
+     smtp:
+       host: "smtp.sendgrid.net"
+       port: 587
+       username: "apikey"
+       password: "SG.your-api-key-here"  # Your SendGrid API Key
+       use_tls: true
+       sender_email: "your-verified-email@gmail.com"
+   ```
+
+5. **Update the secret**:
+   ```bash
+   # Update config secret with email settings
+   gcloud secrets versions add dmaf-config \
+     --data-file=config.yaml
+   ```
+
+**Alternative:** For Gmail, Mailgun, AWS SES, or other providers, see the detailed [DEPLOYMENT.md email setup guide](../DEPLOYMENT.md#email-alerts-setup-optional-but-recommended).
+
 ---
 
 ## Step 3: Create GCS Bucket for WhatsApp Media
