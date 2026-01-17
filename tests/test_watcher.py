@@ -70,7 +70,9 @@ class TestNewImageHandlerOnCreated:
     @patch("dmaf.watcher.time.sleep")
     def test_ignore_directory_events(self, mock_sleep):
         """Test that directory creation events are ignored."""
-        handler = NewImageHandler(Mock(), Mock(), {})
+        cfg = Mock()
+        cfg.delete_source_after_upload = False
+        handler = NewImageHandler(Mock(), Mock(), cfg)
 
         event = Mock()
         event.is_directory = True
@@ -84,7 +86,9 @@ class TestNewImageHandlerOnCreated:
     @patch("dmaf.watcher.time.sleep")
     def test_ignore_non_image_files(self, mock_sleep):
         """Test that non-image files are ignored."""
-        handler = NewImageHandler(Mock(), Mock(), {})
+        cfg = Mock()
+        cfg.delete_source_after_upload = False
+        handler = NewImageHandler(Mock(), Mock(), cfg)
 
         for ext in [".txt", ".pdf", ".doc", ".zip", ".mp4"]:
             event = Mock()
@@ -100,7 +104,9 @@ class TestNewImageHandlerOnCreated:
     @patch.object(NewImageHandler, "_handle_file")
     def test_process_image_files(self, mock_handle, mock_sleep):
         """Test that image files are processed."""
-        handler = NewImageHandler(Mock(), Mock(), {})
+        cfg = Mock()
+        cfg.delete_source_after_upload = False
+        handler = NewImageHandler(Mock(), Mock(), cfg)
 
         for ext in [".jpg", ".jpeg", ".png", ".heic", ".webp", ".JPG", ".PNG"]:
             event = Mock()
@@ -121,7 +127,9 @@ class TestNewImageHandlerOnCreated:
         """Test that exceptions in _handle_file are caught and logged."""
         mock_handle.side_effect = Exception("Test error")
 
-        handler = NewImageHandler(Mock(), Mock(), {})
+        cfg = Mock()
+        cfg.delete_source_after_upload = False
+        handler = NewImageHandler(Mock(), Mock(), cfg)
 
         event = Mock()
         event.is_directory = False
@@ -142,7 +150,9 @@ class TestNewImageHandlerHandleFile:
         db_conn.seen.return_value = True
 
         process_fn = Mock()
-        handler = NewImageHandler(process_fn, db_conn, {})
+        cfg = Mock()
+        cfg.delete_source_after_upload = False
+        handler = NewImageHandler(process_fn, db_conn, cfg)
 
         test_file = temp_dir / "test.jpg"
         test_file.write_bytes(b"fake_image")
@@ -165,7 +175,9 @@ class TestNewImageHandlerHandleFile:
         mock_image_open.side_effect = Exception("Corrupted image")
 
         process_fn = Mock()
-        handler = NewImageHandler(process_fn, db_conn, {})
+        cfg = Mock()
+        cfg.delete_source_after_upload = False
+        handler = NewImageHandler(process_fn, db_conn, cfg)
 
         test_file = temp_dir / "corrupted.jpg"
         test_file.write_bytes(b"corrupted_data")
@@ -195,7 +207,11 @@ class TestNewImageHandlerHandleFile:
         process_fn = Mock()
         process_fn.return_value = (True, ["Alice", "Bob"])
 
-        handler = NewImageHandler(process_fn, db_conn, {})
+        # Config with delete disabled (default)
+        cfg = Mock()
+        cfg.delete_source_after_upload = False
+
+        handler = NewImageHandler(process_fn, db_conn, cfg)
 
         # Mock on_match
         handler.on_match = Mock()
@@ -247,7 +263,11 @@ class TestNewImageHandlerHandleFile:
         process_fn = Mock()
         process_fn.return_value = (False, [])
 
-        handler = NewImageHandler(process_fn, db_conn, {})
+        # Config with delete disabled (default)
+        cfg = Mock()
+        cfg.delete_source_after_upload = False
+
+        handler = NewImageHandler(process_fn, db_conn, cfg)
         handler.on_match = Mock()
 
         test_file = temp_dir / "stranger.jpg"
@@ -275,7 +295,9 @@ class TestNewImageHandlerOnMatch:
 
     def test_on_match_default(self, temp_dir: Path):
         """Test that default on_match does nothing."""
-        handler = NewImageHandler(Mock(), Mock(), {})
+        cfg = Mock()
+        cfg.delete_source_after_upload = False
+        handler = NewImageHandler(Mock(), Mock(), cfg)
 
         test_file = temp_dir / "photo.jpg"
         who = ["Alice"]
@@ -296,7 +318,9 @@ class TestRunWatch:
         mock_observer = Mock()
         mock_observer_class.return_value = mock_observer
 
-        handler = NewImageHandler(Mock(), Mock(), {})
+        cfg = Mock()
+        cfg.delete_source_after_upload = False
+        handler = NewImageHandler(Mock(), Mock(), cfg)
 
         # Simulate KeyboardInterrupt after first sleep
         mock_sleep.side_effect = KeyboardInterrupt()
@@ -327,7 +351,9 @@ class TestRunWatch:
         mock_observer = Mock()
         mock_observer_class.return_value = mock_observer
 
-        handler = NewImageHandler(Mock(), Mock(), {})
+        cfg = Mock()
+        cfg.delete_source_after_upload = False
+        handler = NewImageHandler(Mock(), Mock(), cfg)
 
         mock_sleep.side_effect = KeyboardInterrupt()
 
@@ -351,7 +377,9 @@ class TestRunWatch:
         mock_observer = Mock()
         mock_observer_class.return_value = mock_observer
 
-        handler = NewImageHandler(Mock(), Mock(), {})
+        cfg = Mock()
+        cfg.delete_source_after_upload = False
+        handler = NewImageHandler(Mock(), Mock(), cfg)
         mock_sleep.side_effect = KeyboardInterrupt()
 
         run_watch([str(nested_dir)], handler)
@@ -368,7 +396,9 @@ class TestRunWatch:
         mock_observer = Mock()
         mock_observer_class.return_value = mock_observer
 
-        handler = NewImageHandler(Mock(), Mock(), {})
+        cfg = Mock()
+        cfg.delete_source_after_upload = False
+        handler = NewImageHandler(Mock(), Mock(), cfg)
         mock_sleep.side_effect = KeyboardInterrupt()
 
         run_watch([str(watch_dir)], handler)
@@ -400,7 +430,9 @@ class TestWatcherIntegration:
         process_fn = Mock()
         process_fn.return_value = (True, ["TestPerson"])
 
-        handler = NewImageHandler(process_fn, db_conn, {})
+        cfg = Mock()
+        cfg.delete_source_after_upload = False
+        handler = NewImageHandler(process_fn, db_conn, cfg)
         handler.on_match = Mock()
 
         # Create test file
@@ -419,3 +451,277 @@ class TestWatcherIntegration:
         process_fn.assert_called_once()
         db_conn.add_file_with_score.assert_called_once()
         handler.on_match.assert_called_once()
+
+
+class TestDeleteSourceAfterUpload:
+    """Test delete source after upload feature."""
+
+    @patch("dmaf.watcher.Image.open")
+    @patch("dmaf.watcher.sha256_of_file")
+    def test_delete_source_enabled_watch_mode(self, mock_sha256, mock_image_open, temp_dir: Path):
+        """Test file is deleted after match when delete_source_after_upload=True (watch mode)."""
+        # Setup mocks
+        db_conn = Mock()
+        db_conn.seen.return_value = False
+
+        mock_img = Mock(spec=Image.Image)
+        mock_img_rgb = Mock()
+        mock_img.convert.return_value = mock_img_rgb
+        mock_image_open.return_value = mock_img
+
+        mock_sha256.return_value = "test_hash"
+
+        process_fn = Mock()
+        process_fn.return_value = (True, ["Alice"])
+
+        # Config with delete enabled
+        cfg = Mock()
+        cfg.delete_source_after_upload = True
+
+        handler = NewImageHandler(process_fn, db_conn, cfg)
+        handler.on_match = Mock()
+
+        # Create test file
+        test_file = temp_dir / "to_delete.jpg"
+        test_file.write_bytes(b"fake_image")
+
+        # Process file
+        handler._handle_file(test_file)
+
+        # Verify file was deleted
+        assert not test_file.exists()
+
+    @patch("dmaf.watcher.Image.open")
+    @patch("dmaf.watcher.sha256_of_file")
+    def test_delete_source_disabled_watch_mode(self, mock_sha256, mock_image_open, temp_dir: Path):
+        """Test file is NOT deleted when delete_source_after_upload=False (watch mode)."""
+        # Setup mocks
+        db_conn = Mock()
+        db_conn.seen.return_value = False
+
+        mock_img = Mock(spec=Image.Image)
+        mock_img_rgb = Mock()
+        mock_img.convert.return_value = mock_img_rgb
+        mock_image_open.return_value = mock_img
+
+        mock_sha256.return_value = "test_hash"
+
+        process_fn = Mock()
+        process_fn.return_value = (True, ["Alice"])
+
+        # Config with delete disabled
+        cfg = Mock()
+        cfg.delete_source_after_upload = False
+
+        handler = NewImageHandler(process_fn, db_conn, cfg)
+        handler.on_match = Mock()
+
+        # Create test file
+        test_file = temp_dir / "to_keep.jpg"
+        test_file.write_bytes(b"fake_image")
+
+        # Process file
+        handler._handle_file(test_file)
+
+        # Verify file still exists
+        assert test_file.exists()
+
+    @patch("dmaf.watcher.Image.open")
+    @patch("dmaf.watcher.sha256_of_file")
+    def test_delete_source_no_match_watch_mode(self, mock_sha256, mock_image_open, temp_dir: Path):
+        """Test file is NOT deleted when no match (watch mode)."""
+        # Setup mocks
+        db_conn = Mock()
+        db_conn.seen.return_value = False
+
+        mock_img = Mock(spec=Image.Image)
+        mock_img_rgb = Mock()
+        mock_img.convert.return_value = mock_img_rgb
+        mock_image_open.return_value = mock_img
+
+        mock_sha256.return_value = "test_hash"
+
+        process_fn = Mock()
+        process_fn.return_value = (False, [])  # No match
+
+        # Config with delete enabled
+        cfg = Mock()
+        cfg.delete_source_after_upload = True
+
+        handler = NewImageHandler(process_fn, db_conn, cfg)
+        handler.on_match = Mock()
+
+        # Create test file
+        test_file = temp_dir / "no_match.jpg"
+        test_file.write_bytes(b"fake_image")
+
+        # Process file
+        handler._handle_file(test_file)
+
+        # Verify file still exists (only delete on match)
+        assert test_file.exists()
+
+    @patch("dmaf.watcher.Image.open")
+    @patch("dmaf.watcher.sha256_of_file")
+    def test_delete_source_failure_logged_watch_mode(
+        self, mock_sha256, mock_image_open, temp_dir: Path, caplog
+    ):
+        """Test deletion failure is logged but doesn't crash (watch mode)."""
+        # Setup mocks
+        db_conn = Mock()
+        db_conn.seen.return_value = False
+
+        mock_img = Mock(spec=Image.Image)
+        mock_img_rgb = Mock()
+        mock_img.convert.return_value = mock_img_rgb
+        mock_image_open.return_value = mock_img
+
+        mock_sha256.return_value = "test_hash"
+
+        process_fn = Mock()
+        process_fn.return_value = (True, ["Alice"])
+
+        # Config with delete enabled
+        cfg = Mock()
+        cfg.delete_source_after_upload = True
+
+        handler = NewImageHandler(process_fn, db_conn, cfg)
+        handler.on_match = Mock()
+
+        # Create test file
+        test_file = temp_dir / "delete_will_fail.jpg"
+        test_file.write_bytes(b"fake_image")
+
+        # Mock unlink to raise exception
+        with patch.object(Path, "unlink", side_effect=OSError("Permission denied")):
+            # Process file - should not crash
+            handler._handle_file(test_file)
+
+        # Verify warning was logged
+        assert "Failed to delete" in caplog.text
+        assert "Permission denied" in caplog.text
+
+    @patch("dmaf.watcher.Image.open")
+    @patch("dmaf.watcher.sha256_of_file")
+    def test_delete_source_enabled_batch_mode(self, mock_sha256, mock_image_open, temp_dir: Path):
+        """Test file is deleted after match in batch mode."""
+        from dmaf.watcher import scan_and_process_once
+
+        # Setup mocks
+        db_conn = Mock()
+        db_conn.seen.return_value = False
+
+        mock_img = Mock(spec=Image.Image)
+        mock_img_rgb = Mock()
+        mock_img.convert.return_value = mock_img_rgb
+        mock_image_open.return_value = mock_img
+
+        mock_sha256.return_value = "test_hash"
+
+        process_fn = Mock()
+        process_fn.return_value = (True, ["Bob"])
+
+        # Config with delete enabled
+        cfg = Mock()
+        cfg.delete_source_after_upload = True
+
+        handler = NewImageHandler(process_fn, db_conn, cfg)
+        handler.on_match = Mock()
+
+        # Create test file in watch directory
+        watch_dir = temp_dir / "watch"
+        watch_dir.mkdir()
+        test_file = watch_dir / "batch_delete.jpg"
+        test_file.write_bytes(b"fake_image")
+
+        # Run batch scan
+        result = scan_and_process_once([str(watch_dir)], handler)
+
+        # Verify file was deleted
+        assert not test_file.exists()
+        assert result.matched == 1
+        assert result.uploaded == 1
+
+    @patch("dmaf.watcher.Image.open")
+    @patch("dmaf.watcher.sha256_of_file")
+    def test_delete_source_disabled_batch_mode(self, mock_sha256, mock_image_open, temp_dir: Path):
+        """Test file is NOT deleted in batch mode when disabled."""
+        from dmaf.watcher import scan_and_process_once
+
+        # Setup mocks
+        db_conn = Mock()
+        db_conn.seen.return_value = False
+
+        mock_img = Mock(spec=Image.Image)
+        mock_img_rgb = Mock()
+        mock_img.convert.return_value = mock_img_rgb
+        mock_image_open.return_value = mock_img
+
+        mock_sha256.return_value = "test_hash"
+
+        process_fn = Mock()
+        process_fn.return_value = (True, ["Bob"])
+
+        # Config with delete disabled
+        cfg = Mock()
+        cfg.delete_source_after_upload = False
+
+        handler = NewImageHandler(process_fn, db_conn, cfg)
+        handler.on_match = Mock()
+
+        # Create test file in watch directory
+        watch_dir = temp_dir / "watch"
+        watch_dir.mkdir()
+        test_file = watch_dir / "batch_keep.jpg"
+        test_file.write_bytes(b"fake_image")
+
+        # Run batch scan
+        result = scan_and_process_once([str(watch_dir)], handler)
+
+        # Verify file still exists
+        assert test_file.exists()
+        assert result.matched == 1
+
+    @patch("dmaf.watcher.Image.open")
+    @patch("dmaf.watcher.sha256_of_file")
+    def test_delete_source_upload_failure_batch_mode(
+        self, mock_sha256, mock_image_open, temp_dir: Path
+    ):
+        """Test file is NOT deleted when upload fails in batch mode."""
+        from dmaf.watcher import scan_and_process_once
+
+        # Setup mocks
+        db_conn = Mock()
+        db_conn.seen.return_value = False
+
+        mock_img = Mock(spec=Image.Image)
+        mock_img_rgb = Mock()
+        mock_img.convert.return_value = mock_img_rgb
+        mock_image_open.return_value = mock_img
+
+        mock_sha256.return_value = "test_hash"
+
+        process_fn = Mock()
+        process_fn.return_value = (True, ["Bob"])
+
+        # Config with delete enabled
+        cfg = Mock()
+        cfg.delete_source_after_upload = True
+
+        handler = NewImageHandler(process_fn, db_conn, cfg)
+        # Make on_match raise exception (upload failure)
+        handler.on_match = Mock(side_effect=Exception("Upload failed"))
+
+        # Create test file in watch directory
+        watch_dir = temp_dir / "watch"
+        watch_dir.mkdir()
+        test_file = watch_dir / "upload_fail.jpg"
+        test_file.write_bytes(b"fake_image")
+
+        # Run batch scan
+        result = scan_and_process_once([str(watch_dir)], handler)
+
+        # Verify file still exists (upload failed, so don't delete)
+        assert test_file.exists()
+        assert result.errors == 1
+        assert result.uploaded == 0

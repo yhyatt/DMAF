@@ -99,8 +99,22 @@ class NewImageHandler(FileSystemEventHandler):
         if matched:
             self.logger.info(f"Match {p.name} -> {who}")
             self.on_match(p, who)
+            # Delete source if configured (after successful upload)
+            if self.cfg.delete_source_after_upload:
+                try:
+                    p.unlink()
+                    self.logger.info(f"Deleted source: {p.name}")
+                except Exception as e:
+                    self.logger.warning(f"Failed to delete {p.name}: {e}")
         else:
             self.logger.info(f"No match {p.name}")
+            # Delete unmatched if configured (staging cleanup)
+            if self.cfg.delete_unmatched_after_processing:
+                try:
+                    p.unlink()
+                    self.logger.info(f"Deleted unmatched: {p.name}")
+                except Exception as e:
+                    self.logger.warning(f"Failed to delete unmatched {p.name}: {e}")
 
     def on_match(self, p: Path, who):
         pass  # overridden by caller
@@ -215,6 +229,13 @@ def scan_and_process_once(dirs, handler) -> ScanResult:
                     # Call on_match hook for uploading
                     try:
                         handler.on_match(image_path, who)
+                        # Delete source if configured (after successful upload)
+                        if handler.cfg.delete_source_after_upload:
+                            try:
+                                image_path.unlink()
+                                logger.info(f"Deleted source: {image_path.name}")
+                            except Exception as e:
+                                logger.warning(f"Failed to delete {image_path.name}: {e}")
                     except Exception as e:
                         logger.error(f"Upload failed for {image_path.name}: {e}")
                         errors += 1
@@ -223,6 +244,13 @@ def scan_and_process_once(dirs, handler) -> ScanResult:
                             handler.alert_manager.record_error("upload", str(e), str(image_path))
                 else:
                     logger.info(f"No match {image_path.name}")
+                    # Delete unmatched if configured (staging cleanup)
+                    if handler.cfg.delete_unmatched_after_processing:
+                        try:
+                            image_path.unlink()
+                            logger.info(f"Deleted unmatched: {image_path.name}")
+                        except Exception as e:
+                            logger.warning(f"Failed to delete unmatched {image_path.name}: {e}")
 
             except Exception as e:
                 logger.error(f"Error processing {image_path.name}: {e}")

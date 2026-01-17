@@ -18,7 +18,11 @@ Complete setup guide for deploying DMAF (Don't Miss A Face) with all features en
 ### Required
 - **Python 3.10+** - Check with `python --version`
 - **Google Cloud Project** with Photos Library API enabled
-- **WhatsApp media directory** accessible locally (via Android file sync, WSL, or similar)
+- **WhatsApp media access** via one of:
+  - **Dropbox Camera Upload** (iOS/Android) - Recommended, see [WhatsApp Media Sync Setup](#whatsapp-media-sync-setup)
+  - **Android file sync** (Syncthing, FolderSync, etc.)
+  - **WhatsApp Desktop** media folder
+  - **WSL file system** mount (Windows)
 
 ### Optional (for Email Alerts)
 - **Gmail account** (or other SMTP server)
@@ -340,6 +344,304 @@ Set `alerting.enabled: false` in config.yaml.
 
 ---
 
+## WhatsApp Media Sync Setup
+
+DMAF needs access to WhatsApp media files. Choose the method that best fits your setup:
+
+### Option 1: WhatsApp Desktop + rclone (Recommended for All Platforms) ⭐
+
+**Best for**: Cross-platform solution (iOS + Android), cloud DMAF deployment, zero duplicates
+
+**Why WhatsApp Desktop?**
+- ✅ Works with both iOS and Android phones
+- ✅ **Pure WhatsApp media only** (no personal photos or screenshots)
+- ✅ **Zero duplicates** (separate from phone's camera backup)
+- ✅ Desktop continues working even when you switch phones
+- ✅ Works with cloud DMAF deployment via rclone sync
+- ⚠️ Requires desktop/laptop to be running periodically
+
+**What you get**:
+```
+Camera photos → Phone → Google Photos app → Personal backup ✓
+WhatsApp media → Phone → Desktop → rclone → DMAF → Filtered backup ✓
+
+Zero overlap, zero duplicates!
+```
+
+#### Setup Steps
+
+**1. Install WhatsApp Desktop**
+
+Download from [whatsapp.com/download](https://www.whatsapp.com/download) and install on your Mac, Windows, or Linux machine.
+
+**2. Link to Your Phone**
+- Open WhatsApp Desktop
+- Scan QR code with WhatsApp on your phone:
+  - **iOS**: WhatsApp → Settings → Linked Devices → Link a Device
+  - **Android**: WhatsApp → Three dots → Linked Devices → Link a Device
+
+**3. Configure Auto-Download**
+```
+WhatsApp Desktop → Settings (gear icon) → Storage
+
+Media auto-download:
+✓ Photos (enable)
+✓ Videos (enable if wanted, or disable to save space)
+☐ Audio (optional)
+☐ Documents (optional)
+
+Download location: [Default is fine]
+```
+
+**Important**: Set WhatsApp Desktop to auto-start on login:
+- **Mac**: System Preferences → Users & Groups → Login Items → Add WhatsApp
+- **Windows**: Task Manager → Startup tab → Enable WhatsApp
+
+**4. Install and Configure rclone**
+
+**On Mac**:
+```bash
+# Install rclone
+brew install rclone
+
+# Configure rclone for your DMAF server destination
+# For local server:
+rclone config
+# Choose: n (new remote)
+# Name: dmaf-server
+# Type: sftp (or smb, ftp, depending on your server)
+# Host: your-server-ip
+# Configure authentication
+
+# Test sync
+rclone sync ~/Library/Containers/WhatsApp/Data/Library/Application\ Support/WhatsApp/Media/ \
+  dmaf-server:/path/to/dmaf/watch-dir/ --dry-run
+```
+
+**On Windows**:
+```powershell
+# Install rclone (download from rclone.org or use Chocolatey)
+choco install rclone
+
+# Configure rclone (same as Mac)
+rclone config
+
+# Test sync (adjust path - varies by WhatsApp version)
+rclone sync "$env:LOCALAPPDATA\Packages\5319275A.WhatsAppDesktop_cv1g1gnamwj4y\LocalState\shared\transfers\" dmaf-server:/path/to/dmaf/watch-dir/ --dry-run
+```
+
+**5. Automate Sync**
+
+**On Mac (using launchd)**:
+```bash
+# Create sync script
+cat > ~/sync-whatsapp-to-dmaf.sh << 'EOF'
+#!/bin/bash
+rclone sync \
+  ~/Library/Containers/WhatsApp/Data/Library/Application\ Support/WhatsApp/Media/ \
+  dmaf-server:/path/to/dmaf/watch-dir/ \
+  --log-file ~/rclone-whatsapp.log \
+  --log-level INFO
+EOF
+
+chmod +x ~/sync-whatsapp-to-dmaf.sh
+
+# Create launchd plist
+cat > ~/Library/LaunchAgents/com.dmaf.whatsapp-sync.plist << 'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.dmaf.whatsapp-sync</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/YOUR_USERNAME/sync-whatsapp-to-dmaf.sh</string>
+    </array>
+    <key>StartInterval</key>
+    <integer>3600</integer>
+    <key>RunAtLoad</key>
+    <true/>
+</dict>
+</plist>
+EOF
+
+# Load the job (runs every hour)
+launchctl load ~/Library/LaunchAgents/com.dmaf.whatsapp-sync.plist
+```
+
+**On Windows (using Task Scheduler)**:
+```powershell
+# Create scheduled task (runs every hour)
+$action = New-ScheduledTaskAction -Execute "rclone.exe" -Argument "sync `"$env:LOCALAPPDATA\Packages\5319275A.WhatsAppDesktop_cv1g1gnamwj4y\LocalState\shared\transfers\`" dmaf-server:/path/to/dmaf/watch-dir/ --log-file C:\rclone-whatsapp.log"
+
+$trigger = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Hours 1)
+
+Register-ScheduledTask -TaskName "DMAF WhatsApp Sync" -Action $action -Trigger $trigger -Description "Sync WhatsApp Desktop media to DMAF server"
+```
+
+**6. Configure DMAF**
+
+```yaml
+# In config.yaml
+watch_dirs:
+  - "/path/to/dmaf/watch-dir"  # Where rclone syncs to
+
+# Safe settings - WhatsApp Desktop folder is pure WhatsApp content
+delete_source_after_upload: true              # Delete after Google Photos upload
+delete_unmatched_after_processing: true       # Safe - no personal photos
+```
+
+**7. Critical WhatsApp Settings on Phone**
+
+To prevent duplicates, configure your phone:
+
+**On Android**:
+```
+WhatsApp → Settings → Chats → Media visibility = OFF
+
+This prevents WhatsApp media from copying to Gallery/Camera folder
+```
+
+**On iOS**:
+```
+WhatsApp → Settings → Chats → Save to Camera Roll = OFF
+
+This prevents WhatsApp media from copying to Camera Roll
+```
+
+**Verify Google Photos app is NOT backing up WhatsApp**:
+```
+Google Photos app → Settings → Backup → Device folders
+
+Make sure only Camera folder is enabled:
+✓ Camera (DCIM/Camera/)
+✗ WhatsApp Images (should NOT be checked)
+✗ WhatsApp Video (should NOT be checked)
+```
+
+#### Limitations & Considerations
+
+**Desktop Must Be Running**:
+- WhatsApp Desktop needs to be open periodically
+- Media downloads happen when Desktop is active
+- Set to auto-start on login (see step 3 above)
+
+**Chats Must Be Opened**:
+- Media from unopened chats may not download automatically
+- Solution: Open WhatsApp Desktop daily, scroll through chats
+- Most active chats will auto-download media
+- Completeness: ~95% with regular use
+
+**Storage on Desktop**:
+- WhatsApp Desktop media can grow to 10-50GB
+- Optional cleanup strategies:
+  - Use `rclone move` instead of `sync` (deletes after upload)
+  - Manually clear: WhatsApp Desktop → Settings → Storage → Manage storage
+  - Let DMAF delete from destination after processing
+
+**Initial Backfill**:
+- Desktop only syncs recent messages when first linked
+- Historical media stays on phone only
+- Fine for ongoing operation; export from phone if historical backfill needed
+
+#### Data Flow
+```
+WhatsApp message received on phone
+     ↓
+Multi-device sync to WhatsApp Desktop
+     ↓
+Media auto-downloads (when chat opened or viewed recently)
+     ↓
+Saved to Desktop local folder
+     ↓
+rclone syncs Desktop → DMAF server (hourly)
+     ↓
+DMAF processes: face recognition filtering
+     ↓
+Matched photos → Google Photos
+Unmatched photos → deleted
+
+Camera photos on phone
+     ↓
+Google Photos app backup (separate path)
+     ↓
+Google Photos (no filtering, all personal photos)
+
+Result: Zero duplicates, clean separation!
+```
+
+---
+
+### Option 2: Direct Android Sync (Android Only)
+
+**Best for**: Android users who want phone-based sync without desktop dependency
+
+**✅ Advantages**:
+- Syncs ONLY WhatsApp media folder (`/Android/media/com.whatsapp/`)
+- No personal photos involved
+- 100% complete (all WhatsApp media synced)
+- No desktop required
+- Real-time sync possible
+
+**⚠️ Limitation**: Android only (doesn't work when you switch to iOS)
+
+#### Option 2a: FolderSync Pro ($5, Recommended)
+
+**Setup**:
+1. Install [FolderSync Pro](https://play.google.com/store/apps/details?id=dk.tacit.android.foldersync.full) from Play Store
+2. Configure sync account:
+   - For local server: SFTP, SMB, FTP, WebDAV
+   - For cloud: Can sync to your DMAF server
+3. Create folder pair:
+   - **Local folder**: `/Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Images/`
+   - **Remote folder**: Your DMAF server watch directory
+   - **Sync type**: "To remote folder" (upload only)
+   - **Schedule**: Every 3 hours (or real-time)
+4. Optional: Enable "Delete source files after sync" to save phone storage
+
+**Configure phone**:
+```
+WhatsApp → Settings → Chats → Media visibility = OFF
+
+Google Photos app → Settings → Backup → Device folders
+✓ Camera only
+✗ WhatsApp Images (disable)
+```
+
+**DMAF config**:
+```yaml
+watch_dirs:
+  - "/path/to/synced/whatsapp/folder"
+
+delete_source_after_upload: true
+delete_unmatched_after_processing: true  # Safe - WhatsApp folder only
+```
+
+#### Option 2b: Syncthing-Fork (Free, LAN Only)
+
+**Setup**:
+1. Install [Syncthing-Fork](https://f-droid.org/en/packages/com.github.catfriend1.syncthingandroid/) from F-Droid
+2. Configure sync folder: `/Android/media/com.whatsapp/WhatsApp/Media/`
+3. Add DMAF server as sync target
+4. Works over LAN or VPN (Tailscale/Zerotier)
+
+**Pros**: Free, P2P, no cloud dependency
+**Cons**: Requires LAN/VPN, battery optimization issues on some devices
+
+---
+
+### Option 3: Manual Export (Occasional Use)
+
+**Best for**: Occasional batch imports, not continuous monitoring
+
+1. In WhatsApp: Chat → More → Export Chat → Attach Media
+2. Save ZIP file
+3. Extract to DMAF watch directory
+4. Run DMAF in scan-once mode: `dmaf --scan-once --config config.yaml`
+
+---
+
 ## Configuration
 
 ### 1. Add Reference Photos
@@ -398,9 +700,16 @@ known_people_dir: "./data/known_people"
 watch_dirs:
   - "/mnt/c/Users/YourName/WhatsApp/Media/WhatsApp Images"
   - "/mnt/c/Users/YourName/WhatsApp/Media/WhatsApp Video"
+  # Cloud staging example:
+  # - "/home/user/dropbox-sync/Camera Uploads"
 
 # Google Photos album (optional)
 google_photos_album_name: "Family - Auto WhatsApp"
+
+# Source file management
+# Delete files after successful upload (useful for cloud staging like Dropbox)
+# WARNING: Destructive - files are permanently deleted!
+delete_source_after_upload: false  # Set to true for Dropbox/cloud staging
 
 # Face recognition
 recognition:

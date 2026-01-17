@@ -9,6 +9,16 @@ watch_dirs:
   # Add more directories as needed
   # - "/another/path/to/watch"
 
+  # WhatsApp Desktop examples (recommended - see DEPLOYMENT.md):
+  # Mac: "~/Library/Containers/WhatsApp/Data/Library/Application Support/WhatsApp/Media/"
+  # Windows: "%LOCALAPPDATA%\\Packages\\5319275A.WhatsAppDesktop_...\\LocalState\\shared\\transfers\\"
+
+  # Android FolderSync/Syncthing examples:
+  # - "/path/to/synced/whatsapp/folder"
+
+  # Cloud deployment (GCS bucket):
+  # - "gs://your-project-whatsapp-media/"
+
 # Optional: Google Photos album to upload to
 # If omitted or null, items go to library root
 google_photos_album_name: null  # "Family - Auto WhatsApp Imports"
@@ -86,6 +96,32 @@ dedup:
 
 # Logging level: DEBUG, INFO, WARNING, ERROR, CRITICAL
 log_level: "INFO"
+
+# ============================================================================
+# Source File Management
+# ============================================================================
+
+# Delete source images after successful Google Photos upload
+# Useful for cloud staging scenarios (Dropbox, GCS) to prevent storage bloat
+# WARNING: Destructive - source files are permanently deleted!
+# Default: false (keep source files)
+delete_source_after_upload: false
+
+# Delete images that don't match any known faces after processing
+# WARNING: VERY DESTRUCTIVE! Use ONLY for pure staging directories like Dropbox Camera Upload
+# that may contain personal photos you DON'T want to keep (e.g., screenshots, memes).
+# Personal photos without known faces will be PERMANENTLY DELETED!
+#
+# Use case: Dropbox Camera Upload backs up ALL photos (WhatsApp + personal).
+# With this enabled:
+#   - WhatsApp photos with family → Google Photos → deleted from Dropbox ✓
+#   - WhatsApp photos without family → deleted from Dropbox ✓
+#   - Personal photos without family → deleted from Dropbox ✗ (might want to keep!)
+#
+# Recommendation: Keep this FALSE unless you're 100% certain all photos in watch_dirs
+# are disposable if they don't contain known faces.
+# Default: false (keep unmatched files)
+delete_unmatched_after_processing: false
 
 # ============================================================================
 # Email Alerting & Observability (Phase F-prep)

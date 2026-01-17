@@ -244,6 +244,19 @@ class Settings(BaseSettings):
         default="INFO",
         description="Logging level",
     )
+    delete_source_after_upload: bool = Field(
+        default=False,
+        description="Delete source image after successful Google Photos upload. "
+        "Useful for cloud staging (Dropbox) to prevent storage bloat. "
+        "WARNING: Destructive - files are permanently deleted!",
+    )
+    delete_unmatched_after_processing: bool = Field(
+        default=False,
+        description="Delete images that don't match any known faces after processing. "
+        "WARNING: VERY DESTRUCTIVE - use only for pure staging directories where "
+        "ALL photos are expected to contain known faces. "
+        "Personal photos without known faces will be permanently deleted!",
+    )
     recognition: RecognitionSettings = Field(
         default_factory=RecognitionSettings,
         description="Face recognition settings",

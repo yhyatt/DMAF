@@ -329,7 +329,286 @@ gcloud scheduler jobs describe dmaf-schedule --location=us-central1
 
 You need a method to sync WhatsApp media from your phone to the GCS bucket.
 
-### Option A: FolderSync Pro (Android) - Easiest
+### Option A: WhatsApp Desktop + rclone (iOS + Android) - Recommended ⭐
+
+**Best for**: Both iOS and Android users, cleanest setup with zero duplicates
+
+**✅ WHY THIS IS THE BEST OPTION**:
+- ✅ **Only WhatsApp media** - No personal photos, screenshots, or camera roll mixed in
+- ✅ **Zero duplicates** - WhatsApp Desktop is separate from phone's photo backup
+- ✅ **Cross-platform** - Works identically for iOS and Android via multi-device linking
+- ✅ **Survives phone transitions** - Desktop stays configured when you switch phones
+- ✅ **95% completeness** - Gets media from all chats (chats must be opened occasionally)
+- ✅ **Simple phone setup** - Just link WhatsApp Desktop, no extra apps needed
+
+**Architecture**:
+```
+Phone (iOS/Android) → WhatsApp Multi-Device → Desktop (Mac/PC) → rclone → GCS Bucket → DMAF Cloud Run
+```
+
+#### Step 1: Install WhatsApp Desktop
+
+**On Mac**:
+```bash
+# Download from Mac App Store or official site
+# https://www.whatsapp.com/download
+```
+
+**On Windows**:
+```bash
+# Download from Microsoft Store or official site
+# https://www.whatsapp.com/download
+```
+
+**On Linux**:
+```bash
+# Snap package (Ubuntu/Debian)
+sudo snap install whatsapp-for-linux
+
+# Or download AppImage from official site
+```
+
+#### Step 2: Link Your Phone to WhatsApp Desktop
+
+**iOS or Android**:
+1. Open WhatsApp on your phone
+2. Tap **Settings** → **Linked Devices** (or **WhatsApp Web/Desktop**)
+3. Tap **Link a Device**
+4. Scan QR code shown on Desktop app
+5. ✅ Desktop is now linked (works even when phone is offline!)
+
+**Enable auto-download in WhatsApp Desktop**:
+1. Open WhatsApp Desktop
+2. Settings → Storage
+3. Enable **"Automatically download new photos and videos"**
+4. Optional: Set size limit (e.g., 50MB per file)
+
+**Media storage locations**:
+- **Mac**: `~/Library/Containers/WhatsApp/Data/Library/Application Support/WhatsApp/Media/`
+- **Windows (Store)**: `%LOCALAPPDATA%\Packages\5319275A.WhatsAppDesktop_cv1g1gnamwj4y\LocalState\shared\transfers\`
+- **Windows (Web install)**: `%LOCALAPPDATA%\WhatsApp\` or `%APPDATA%\WhatsApp\`
+
+#### Step 3: Set up rclone on the Same Mac/PC
+
+**Install rclone**:
+
+**Mac**:
+```bash
+brew install rclone
+```
+
+**Windows**:
+```powershell
+# Download installer from https://rclone.org/downloads/
+# Or use chocolatey:
+choco install rclone
+```
+
+**Linux**:
+```bash
+curl https://rclone.org/install.sh | sudo bash
+```
+
+**Configure GCS remote**:
+```bash
+rclone config
+# Choose: n (new remote)
+# Name: gcs
+# Storage: google cloud storage
+# Project ID: your-project-id
+# Service account: Use service account created earlier (dmaf-runner)
+# Upload service account key JSON
+
+# Test connection
+rclone lsd gcs:
+```
+
+**Test sync**:
+
+**Mac**:
+```bash
+# Dry run first
+rclone sync "$HOME/Library/Containers/WhatsApp/Data/Library/Application Support/WhatsApp/Media/" \
+  gcs:your-project-id-whatsapp-media/ \
+  --dry-run
+
+# If looks good, run for real
+rclone sync "$HOME/Library/Containers/WhatsApp/Data/Library/Application Support/WhatsApp/Media/" \
+  gcs:your-project-id-whatsapp-media/
+```
+
+**Windows**:
+```powershell
+# Dry run first
+rclone sync "%LOCALAPPDATA%\Packages\5319275A.WhatsAppDesktop_cv1g1gnamwj4y\LocalState\shared\transfers\" gcs:your-project-id-whatsapp-media/ --dry-run
+
+# If looks good, run for real
+rclone sync "%LOCALAPPDATA%\Packages\5319275A.WhatsAppDesktop_cv1g1gnamwj4y\LocalState\shared\transfers\" gcs:your-project-id-whatsapp-media/
+```
+
+#### Step 4: Automate rclone Sync
+
+**Mac - Using launchd** (runs hourly):
+
+Create launch agent:
+```bash
+mkdir -p ~/Library/LaunchAgents
+
+cat > ~/Library/LaunchAgents/com.dmaf.whatsapp-sync.plist << 'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.dmaf.whatsapp-sync</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/local/bin/rclone</string>
+        <string>sync</string>
+        <string>/Users/YOUR_USERNAME/Library/Containers/WhatsApp/Data/Library/Application Support/WhatsApp/Media/</string>
+        <string>gcs:YOUR_PROJECT_ID-whatsapp-media/</string>
+        <string>--log-file</string>
+        <string>/Users/YOUR_USERNAME/rclone-sync.log</string>
+        <string>--log-level</string>
+        <string>INFO</string>
+    </array>
+    <key>StartInterval</key>
+    <integer>3600</integer>
+    <key>RunAtLoad</key>
+    <true/>
+</dict>
+</plist>
+EOF
+
+# Replace YOUR_USERNAME and YOUR_PROJECT_ID in the file above
+
+# Load the launch agent
+launchctl load ~/Library/LaunchAgents/com.dmaf.whatsapp-sync.plist
+
+# Check status
+launchctl list | grep dmaf
+```
+
+**Windows - Using Task Scheduler** (runs hourly):
+
+Create sync script:
+```powershell
+# Create sync-whatsapp-to-gcs.ps1
+$script = @'
+$WHATSAPP_PATH = "$env:LOCALAPPDATA\Packages\5319275A.WhatsAppDesktop_cv1g1gnamwj4y\LocalState\shared\transfers\"
+$PROJECT_ID = "your-project-id"
+
+rclone sync $WHATSAPP_PATH gcs:$PROJECT_ID-whatsapp-media/ `
+  --log-file "$HOME\rclone-sync.log" `
+  --log-level INFO `
+  --transfers 4 `
+  --checkers 8
+
+Write-Output "Sync completed at $(Get-Date)"
+'@
+
+$script | Out-File -FilePath "$HOME\sync-whatsapp-to-gcs.ps1" -Encoding UTF8
+```
+
+Create scheduled task:
+```powershell
+$action = New-ScheduledTaskAction -Execute "PowerShell.exe" -Argument "-File $HOME\sync-whatsapp-to-gcs.ps1"
+$trigger = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Hours 1)
+$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
+Register-ScheduledTask -Action $action -Trigger $trigger -Settings $settings -TaskName "DMAF WhatsApp Sync" -Description "Sync WhatsApp Desktop media to GCS for DMAF processing"
+```
+
+**Linux - Using cron**:
+```bash
+crontab -e
+# Add this line (adjust path to your WhatsApp installation):
+0 * * * * rclone sync ~/.local/share/whatsapp-for-linux/MediaCache/ gcs:your-project-id-whatsapp-media/ --log-file ~/rclone-sync.log
+```
+
+#### Step 5: Configure Phone Settings to Prevent Duplicates
+
+**CRITICAL**: Configure your phone to prevent WhatsApp photos from appearing in camera roll backup:
+
+**iOS**:
+1. WhatsApp → Settings → Chats → **"Save to Camera Roll"** → **OFF**
+2. This ensures WhatsApp media ONLY goes through Desktop → DMAF pipeline
+3. Your regular camera photos still backup to iCloud/Google Photos normally
+
+**Android**:
+1. WhatsApp → Settings → Chats → **"Media visibility"** → **OFF**
+2. This prevents WhatsApp images from appearing in Gallery
+3. Your regular camera photos still backup to Google Photos normally
+
+**Result**: Complete separation:
+- 📷 Camera photos → Phone backup (iCloud/Google Photos) → Your main library ✅
+- 💬 WhatsApp media → Desktop → rclone → GCS → DMAF filter → Curated Google Photos ✅
+- 🚫 Zero duplicates! ✅
+
+#### Step 6: Configure DMAF Cloud Run Job
+
+Update your `config.yaml`:
+```yaml
+# In your config.yaml for Cloud Run
+watch_dirs:
+  - "gs://your-project-id-whatsapp-media"  # GCS bucket path
+
+# Delete matched photos after upload to Google Photos
+# Safe to enable - these are WhatsApp photos that already exist in chats
+delete_source_after_upload: true
+
+# Delete unmatched photos (optional)
+# Safe for WhatsApp-only folder (no personal photos mixed in)
+delete_unmatched_after_processing: false  # Set to true if you want to auto-cleanup non-matches
+```
+
+#### Step 7: Verify End-to-End Flow
+
+1. **Send a test photo** in WhatsApp (with your face)
+2. **Check WhatsApp Desktop** - photo should appear in chat
+3. **Check storage location** - photo should be in Media folder
+4. **Wait for rclone sync** (or trigger manually)
+5. **Check GCS bucket**:
+   ```bash
+   gsutil ls gs://your-project-id-whatsapp-media/
+   ```
+6. **Wait for Cloud Scheduler** (or trigger manually):
+   ```bash
+   gcloud run jobs execute dmaf-processor --region us-central1
+   ```
+7. **Check Google Photos** - photo should appear if face matched!
+
+#### Limitations and Considerations
+
+**Completeness** (~95%):
+- WhatsApp Desktop downloads media from **active conversations**
+- Chats must be opened occasionally for media to sync
+- Very old/archived chats may not download media until opened
+- **Solution**: Scroll through WhatsApp Desktop occasionally to trigger downloads
+
+**Storage Management**:
+- WhatsApp Desktop cache can grow large (10-50GB over time)
+- **Clear old media**:
+  - Mac: Delete contents of Media folder (keeps recent chats)
+  - Windows: Delete contents of transfers folder
+  - rclone will re-sync only new files
+
+**Desktop Must Stay On**:
+- Mac/PC must be powered on and connected to internet for sync
+- **Options**:
+  - Leave desktop on 24/7 (laptop closed, external display)
+  - Use a dedicated small PC/NUC as sync server
+  - Use Wake-on-LAN to schedule wake + sync + sleep
+
+#### Cost Analysis
+- WhatsApp Desktop: Free
+- rclone: Free
+- Desktop electricity: ~$1-2/month (if running 24/7)
+- GCS storage: ~$0.50-2/month (with auto-cleanup)
+- **Total**: $1.50-4/month
+
+---
+
+### Option B: FolderSync Pro (Android Only) - Direct to GCS
 
 1. Install [FolderSync Pro](https://play.google.com/store/apps/details?id=dk.tacit.android.foldersync.full) ($5 one-time)
 2. Create GCP service account key:

@@ -72,6 +72,7 @@
 - **Automatic uploads**: Seamlessly backup to Google Photos
 - **Album organization**: Optionally organize into specific albums
 - **OAuth2 authentication**: Secure, token-based access
+- **Cloud staging support**: Delete source files after upload (ideal for Dropbox/GCS staging)
 
 </td>
 </tr>
@@ -97,8 +98,7 @@
 <td width="50%">
 
 ### 📧 Observability & Monitoring
-- **Email alerts**: SendGrid/SMTP notifications for errors and borderline recognitions
-- **Easy setup**: Free SendGrid account in 5 minutes (100 emails/day)
+- **Email alerts**: SMTP notifications for errors and borderline recognitions
 - **Score tracking**: Records similarity scores (0.0-1.0) for all matches
 - **Batched notifications**: Hourly alerts prevent email spam
 - **Event retention**: 90-day retention with automatic cleanup
@@ -124,7 +124,10 @@
 
 - Python 3.10 or higher
 - Google Cloud project with Photos Library API enabled
-- WhatsApp media directory accessible locally (e.g., via Android file sync, WSL)
+- WhatsApp media access via:
+  - **WhatsApp Desktop + rclone** (iOS/Android) - ⭐ Recommended (zero duplicates, cross-platform)
+  - Android direct sync (FolderSync Pro, Syncthing) - Best for Android-only
+  - See [DEPLOYMENT.md](DEPLOYMENT.md#whatsapp-media-sync-setup) for detailed setup guides
 
 ### Installation
 
@@ -177,8 +180,6 @@ pip install -e ".[all]"  # Both backends
 
 5. **Optional: Enable Email Alerts** (Recommended)
    - Get notified about borderline recognitions and errors
-   - **SendGrid (Recommended)**: Free, secure, 5-minute setup - no personal email risk
-   - Alternative: Dedicated Gmail, Mailgun, AWS SES
    - See [**DEPLOYMENT.md**](DEPLOYMENT.md#email-alerts-setup-optional-but-recommended) for detailed setup
 
 📖 **For complete setup instructions, troubleshooting, and advanced configuration, see [DEPLOYMENT.md](DEPLOYMENT.md)**
