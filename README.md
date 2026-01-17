@@ -97,7 +97,8 @@
 <td width="50%">
 
 ### 📧 Observability & Monitoring
-- **Email alerts**: Notifications for errors and borderline recognitions
+- **Email alerts**: Gmail/SMTP notifications for errors and borderline recognitions
+- **Easy setup**: Configure with Gmail App Password in 5 minutes
 - **Score tracking**: Records similarity scores (0.0-1.0) for all matches
 - **Batched notifications**: Hourly alerts prevent email spam
 - **Event retention**: 90-day retention with automatic cleanup
@@ -173,6 +174,13 @@ pip install -e ".[all]"  # Both backends
    dmaf --config config.yaml
    # Or: python -m dmaf --config config.yaml
    ```
+
+5. **Optional: Enable Email Alerts** (Recommended)
+   - Get notified about borderline recognitions and errors
+   - Set up Gmail App Password in minutes
+   - See [**DEPLOYMENT.md**](DEPLOYMENT.md#email-alerts-setup-optional) for detailed setup
+
+📖 **For complete setup instructions, troubleshooting, and advanced configuration, see [DEPLOYMENT.md](DEPLOYMENT.md)**
 
 ---
 

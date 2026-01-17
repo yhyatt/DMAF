@@ -86,3 +86,74 @@ dedup:
 
 # Logging level: DEBUG, INFO, WARNING, ERROR, CRITICAL
 log_level: "INFO"
+
+# ============================================================================
+# Email Alerting & Observability (Phase F-prep)
+# ============================================================================
+
+# Email alerts for borderline recognitions and processing errors
+alerting:
+  enabled: false  # Set to true to enable email notifications
+
+  # Email addresses to receive alerts
+  recipients:
+    - "your-email@gmail.com"
+
+  # Batching interval in minutes (default: 60)
+  # Alerts are batched to prevent email spam - events accumulate and
+  # are sent together once per interval if there are pending events
+  batch_interval_minutes: 60
+
+  # Borderline offset (default: 0.1)
+  # Alerts when similarity score is close to but below threshold
+  # Example: threshold=0.58 (1-0.42), offset=0.1 → alert if score in [0.48, 0.58)
+  # Helps identify near-miss recognitions that might need manual review
+  borderline_offset: 0.1
+
+  # Event retention in days (default: 90)
+  # Automatically deletes alerted events older than this many days
+  # Prevents unbounded database growth
+  event_retention_days: 90
+
+  # SMTP server configuration
+  # For Gmail: Use App Password (https://myaccount.google.com/apppasswords)
+  # 1. Go to Google Account Settings → Security → 2-Step Verification
+  # 2. At bottom, click "App passwords"
+  # 3. Generate password for "Mail" + your device
+  # 4. Use the 16-character password below (remove spaces)
+  smtp:
+    host: "smtp.gmail.com"
+    port: 587
+    username: "your-email@gmail.com"
+    password: "xxxx xxxx xxxx xxxx"  # Gmail App Password (remove spaces)
+    use_tls: true
+    sender_email: "your-email@gmail.com"
+
+# ============================================================================
+# Auto-Refresh Known People Training Images (Phase F-prep)
+# ============================================================================
+
+# Automatically add new training images from uploaded photos to improve
+# recognition accuracy as people's appearances change over time
+known_refresh:
+  enabled: false  # Set to true to enable auto-refresh
+
+  # Interval in days between refresh runs (default: 60)
+  # How often to check for and add new training images
+  # Minimum: 7 days
+  interval_days: 60
+
+  # Target similarity score for selecting new training images (default: 0.65)
+  # Strategy: Select moderately challenging images, not the easiest ones
+  # - Too high (0.9): System already handles these well, no learning value
+  # - Too low (0.4): Risk of false positives, pollutes training set
+  # - Sweet spot (0.65): Challenging enough to expand recognition range,
+  #   safe enough to avoid false positives
+  # Range: 0.0 to 1.0
+  target_score: 0.65
+
+  # Padding around detected face when cropping (default: 0.3 = 30%)
+  # Adds context around face (hair, neck, shoulders) for better recognition
+  # Example: 200px face + 30% padding = 260px final crop
+  # Range: 0.0 (no padding) to 1.0 (100% padding)
+  crop_padding_percent: 0.3
