@@ -115,19 +115,46 @@ alerting:
   # Prevents unbounded database growth
   event_retention_days: 90
 
-  # SMTP server configuration
-  # For Gmail: Use App Password (https://myaccount.google.com/apppasswords)
-  # 1. Go to Google Account Settings → Security → 2-Step Verification
-  # 2. At bottom, click "App passwords"
-  # 3. Generate password for "Mail" + your device
-  # 4. Use the 16-character password below (remove spaces)
+  # ============================================================================
+  # SMTP Configuration - Choose ONE option below
+  # ============================================================================
+
+  # OPTION 1: SendGrid (RECOMMENDED - Free, Secure, No Personal Email Risk)
+  # - Free tier: 100 emails/day forever
+  # - Industry standard for automated emails
+  # - API key can be revoked instantly
+  # - Better deliverability than Gmail
+  # Setup: https://app.sendgrid.com/signup (see DEPLOYMENT.md)
   smtp:
-    host: "smtp.gmail.com"
+    host: "smtp.sendgrid.net"
     port: 587
-    username: "your-email@gmail.com"
-    password: "xxxx xxxx xxxx xxxx"  # Gmail App Password (remove spaces)
+    username: "apikey"                    # Literal string "apikey"
+    password: "SG.xxxxxxxxxxxxxxxxxxxx"   # Your SendGrid API Key
     use_tls: true
-    sender_email: "your-email@gmail.com"
+    sender_email: "alerts@yourdomain.com" # Verified sender email
+
+  # OPTION 2: Gmail with App Password (Not Recommended - Security Risk)
+  # Google is phasing out App Passwords. Use SendGrid or dedicated Gmail account instead.
+  # smtp:
+  #   host: "smtp.gmail.com"
+  #   port: 587
+  #   username: "your-email@gmail.com"
+  #   password: "xxxx xxxx xxxx xxxx"     # Gmail App Password
+  #   use_tls: true
+  #   sender_email: "your-email@gmail.com"
+
+  # OPTION 3: Dedicated Gmail Account (Simple, Isolated Risk)
+  # Create a new Gmail just for DMAF alerts to isolate security risk
+  # smtp:
+  #   host: "smtp.gmail.com"
+  #   port: 587
+  #   username: "dmaf-alerts@gmail.com"   # New dedicated account
+  #   password: "xxxx xxxx xxxx xxxx"     # App Password for this account
+  #   use_tls: true
+  #   sender_email: "dmaf-alerts@gmail.com"
+
+  # OPTION 4: Other Providers
+  # See DEPLOYMENT.md for Mailgun, AWS SES, and custom SMTP configurations
 
 # ============================================================================
 # Auto-Refresh Known People Training Images (Phase F-prep)

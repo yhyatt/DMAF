@@ -111,72 +111,209 @@ When you first run DMAF, it will:
 
 ---
 
-## Email Alerts Setup (Optional)
+## Email Alerts Setup (Optional but Recommended)
 
 Email alerts notify you about:
 - **Borderline recognitions** - Near-miss matches that need manual review
 - **Processing errors** - File read failures, API errors, etc.
 - **Training updates** - New reference images added via auto-refresh
 
-### Gmail Setup (Recommended)
+### ⭐ SendGrid Setup (Recommended)
 
-#### Step 1: Enable 2-Step Verification
-1. Go to [Google Account Security](https://myaccount.google.com/security)
-2. Enable **2-Step Verification** if not already enabled
+**Why SendGrid?**
+- ✅ **Free forever**: 100 emails/day (plenty for DMAF)
+- ✅ **Secure**: API keys instead of passwords, revoke anytime
+- ✅ **No personal email risk**: Isolated from your Gmail/personal accounts
+- ✅ **Better deliverability**: Professional email service
+- ✅ **Industry standard**: Used by millions of apps
 
-#### Step 2: Generate App Password
-1. Go to [App Passwords](https://myaccount.google.com/apppasswords)
-2. Select:
-   - App: **Mail**
-   - Device: Your device/computer name
-3. Click "Generate"
-4. Copy the **16-character password** (format: `xxxx xxxx xxxx xxxx`)
+**Note:** Google is phasing out App Passwords for Gmail SMTP. SendGrid is the recommended modern alternative.
 
-#### Step 3: Configure DMAF
+#### Step 1: Create SendGrid Account (2 minutes)
+
+1. Go to [SendGrid Signup](https://signup.sendgrid.com/)
+2. Fill in account details (free tier, no credit card required)
+3. Verify your email address
+4. Complete the onboarding survey (select "Technical" role)
+
+#### Step 2: Verify Sender Email (2 minutes)
+
+1. In SendGrid dashboard, go to **Settings** → **Sender Authentication**
+2. Click **Verify a Single Sender**
+3. Fill in your details:
+   - **From Name**: "DMAF Alerts" (or your choice)
+   - **From Email Address**: Your real email (e.g., `your-email@gmail.com`)
+   - **Reply To**: Same as above
+   - Company details: Can use personal info
+4. Click **Create**
+5. Check your email inbox for verification link
+6. Click the verification link
+
+**Important:** You'll send alerts FROM this verified email TO any recipients you configure.
+
+#### Step 3: Create API Key (1 minute)
+
+1. Go to **Settings** → **API Keys**
+2. Click **Create API Key**
+3. Name: "DMAF Email Alerts"
+4. Permissions: **Restricted Access**
+   - Expand **Mail Send** → Enable **Mail Send** (full access)
+   - All other permissions: Leave disabled
+5. Click **Create & View**
+6. **Copy the API key** (starts with `SG.`) - you won't see it again!
+
+#### Step 4: Configure DMAF
 
 Add to your `config.yaml`:
 ```yaml
 alerting:
   enabled: true
   recipients:
-    - "your-email@gmail.com"
-  batch_interval_minutes: 60  # Send batched alerts hourly
-  borderline_offset: 0.1      # Alert if score within 0.1 of threshold
-  event_retention_days: 90    # Clean up old events after 90 days
+    - "your-email@gmail.com"      # Where you want to RECEIVE alerts
+  batch_interval_minutes: 60       # Send batched alerts hourly
+  borderline_offset: 0.1           # Alert if score within 0.1 of threshold
+  event_retention_days: 90         # Clean up old events after 90 days
+  smtp:
+    host: "smtp.sendgrid.net"
+    port: 587
+    username: "apikey"             # Literal string "apikey"
+    password: "SG.xxxxxxxxxxxxxxxxxxxx"  # Your SendGrid API Key from Step 3
+    use_tls: true
+    sender_email: "your-email@gmail.com"  # Must match verified sender from Step 2
+```
+
+#### Step 5: Test (Optional)
+
+Run DMAF and trigger a test event, or manually test:
+```bash
+python -c "
+from dmaf.alerting.email_sender import EmailSender
+from dmaf.config import SmtpSettings
+
+smtp = SmtpSettings(
+    host='smtp.sendgrid.net',
+    port=587,
+    username='apikey',
+    password='SG.your-key-here',
+    use_tls=True,
+    sender_email='your-verified-email@gmail.com'
+)
+sender = EmailSender(smtp)
+success = sender.send_email(
+    'your-email@gmail.com',
+    'DMAF Test',
+    'If you receive this, SendGrid is configured correctly!'
+)
+print('✅ Test email sent!' if success else '❌ Failed')
+"
+```
+
+**That's it!** You now have secure, professional email alerts without risking your personal Gmail account.
+
+---
+
+### Alternative Email Options
+
+#### Option 2: Dedicated Gmail Account (Simple, Isolated)
+
+Create a **new** Gmail account just for DMAF alerts to isolate security risk.
+
+**Why this works:**
+- If DMAF or credentials are compromised, only this account is affected
+- Your personal Gmail remains safe
+- Free and familiar
+- Takes 5 minutes to set up
+
+**Setup:**
+1. Create new Gmail: `dmaf-alerts-yourname@gmail.com`
+2. Enable 2-Step Verification on the new account
+3. Generate App Password:
+   - Go to [App Passwords](https://myaccount.google.com/apppasswords)
+   - Generate password for "Mail"
+4. Configure DMAF:
+```yaml
+alerting:
+  enabled: true
+  recipients:
+    - "your-real-email@gmail.com"  # Send TO your real email
   smtp:
     host: "smtp.gmail.com"
     port: 587
-    username: "your-email@gmail.com"
-    password: "xxxxxxxxxxxxxxxx"  # Your 16-char App Password (no spaces)
+    username: "dmaf-alerts-yourname@gmail.com"  # Dedicated account
+    password: "xxxx xxxx xxxx xxxx"  # App Password for dedicated account
     use_tls: true
-    sender_email: "your-email@gmail.com"
+    sender_email: "dmaf-alerts-yourname@gmail.com"
 ```
 
-**Security Note:** Your `config.yaml` is gitignored and never committed to version control.
+#### Option 3: Mailgun
 
-### Alternative SMTP Servers
+Free tier: 5,000 emails/month for 3 months, then paid.
 
-#### Outlook/Hotmail
+**Setup:**
+1. Sign up at [Mailgun](https://signup.mailgun.com/new/signup)
+2. Verify your email
+3. Get SMTP credentials from **Sending** → **Domain Settings** → **SMTP**
+4. Configure:
 ```yaml
 smtp:
-  host: "smtp-mail.outlook.com"
+  host: "smtp.mailgun.org"
   port: 587
-  username: "your-email@outlook.com"
-  password: "your-password"
+  username: "postmaster@sandbox123.mailgun.org"  # From Mailgun dashboard
+  password: "your-mailgun-smtp-password"
   use_tls: true
-  sender_email: "your-email@outlook.com"
+  sender_email: "dmaf@sandbox123.mailgun.org"
 ```
 
-#### Custom SMTP Server
+#### Option 4: AWS SES (Advanced, Very Cheap)
+
+For users already on AWS. **Pricing:** $0.10 per 1,000 emails.
+
+**Setup:**
+1. Create AWS account
+2. Go to [Amazon SES Console](https://console.aws.amazon.com/ses/)
+3. Verify email address in **Verified Identities**
+4. Create SMTP credentials in **SMTP Settings**
+5. Configure:
 ```yaml
 smtp:
-  host: "smtp.your-domain.com"
-  port: 587  # or 465 for SSL
-  username: "your-username"
-  password: "your-password"
-  use_tls: true  # or false if using SSL on port 465
-  sender_email: "noreply@your-domain.com"
+  host: "email-smtp.us-east-1.amazonaws.com"  # Adjust region
+  port: 587
+  username: "your-aws-smtp-username"
+  password: "your-aws-smtp-password"
+  use_tls: true
+  sender_email: "your-verified@email.com"
 ```
+
+#### Option 5: Skip Email Alerts (No Risk, Manual Checking)
+
+If you prefer not to set up email, you can query events manually:
+
+```bash
+# View pending borderline recognitions
+sqlite3 data/state.sqlite3 "
+  SELECT file_path, match_score, matched_person, created_ts
+  FROM borderline_events
+  WHERE alerted=0
+  ORDER BY created_ts DESC;
+"
+
+# View recent errors
+sqlite3 data/state.sqlite3 "
+  SELECT error_type, error_message, file_path, created_ts
+  FROM error_events
+  WHERE alerted=0
+  ORDER BY created_ts DESC;
+"
+
+# Count unreviewed events
+sqlite3 data/state.sqlite3 "
+  SELECT
+    (SELECT COUNT(*) FROM borderline_events WHERE alerted=0) as borderline,
+    (SELECT COUNT(*) FROM error_events WHERE alerted=0) as errors;
+"
+```
+
+Set `alerting.enabled: false` in config.yaml.
 
 ### Understanding Email Alerts
 

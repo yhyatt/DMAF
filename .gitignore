@@ -30,6 +30,7 @@ client_secret.json
 client_secrets.json
 credentials.json
 token.json
+config.yaml  # User configuration (may contain SMTP passwords)
 
 # Data directory (personal photos and runtime state)
 data/
