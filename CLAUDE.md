@@ -80,8 +80,8 @@ wa_automate/                  # Repository/project root
 - ✅ **Phase D+**: Advanced detection tuning (separate thresholds, LOOCV bug fix, FPR analysis)
 - ✅ **Phase E**: CI/CD (GitHub Actions, automated testing)
 - ✅ **Phase F-prep**: Observability & auto-refresh (alerting, score tracking, known refresh)
-- ⏸️ **Phase F**: Cloud deployment (GCS + Cloud Run) - Next
-- ⏸️ **Phase G**: Documentation & open-source
+- ✅ **Phase F**: Cloud deployment (GCS + Cloud Run + Firestore backend)
+- ⏸️ **Phase G**: Documentation & open-source - Next
 
 ## Useful Commands
 
@@ -106,6 +106,34 @@ mypy src/dmaf
 # Run all pre-commit hooks manually
 pre-commit run --all-files
 ```
+
+## Cloud Deployment Commands
+
+```bash
+# Build and deploy to Cloud Run
+gcloud builds submit --config cloudbuild.yaml
+
+# Execute Cloud Run Job manually
+gcloud run jobs execute dmaf-scan --region=us-central1
+
+# View recent logs
+gcloud logging read "resource.type=cloud_run_job" \
+  --limit=50 --format="table(timestamp, textPayload)" --freshness=5m
+
+# Update config secret
+gcloud secrets versions add dmaf-config --data-file=config.cloud.yaml
+
+# Check job status
+gcloud run jobs describe dmaf-scan --region=us-central1
+
+# List recent executions
+gcloud run jobs executions list --job=dmaf-scan --region=us-central1 --limit=10
+
+# Sync local known_people to container image (rebuild required)
+gcloud builds submit --config cloudbuild.yaml
+```
+
+**See full deployment guide**: `deploy/README.md`
 
 ## Dependencies
 - **Core**: Pydantic, PyYAML, Pillow, NumPy, requests, watchdog

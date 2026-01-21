@@ -254,7 +254,7 @@ gcloud run jobs create dmaf-scan \
   --image=gcr.io/$PROJECT_ID/dmaf:latest \
   --region=us-central1 \
   --service-account=$SA_EMAIL \
-  --memory=1Gi \
+  --memory=2Gi \
   --cpu=1 \
   --max-retries=1 \
   --task-timeout=15m \
@@ -265,7 +265,7 @@ gcloud run jobs create dmaf-scan \
 ```
 
 **Parameters explained**:
-- `--memory=1Gi`: 1GB RAM (sufficient for face recognition)
+- `--memory=2Gi`: 2GB RAM (required for InsightFace model loading)
 - `--cpu=1`: 1 vCPU (adequate for batch processing)
 - `--max-retries=1`: Retry once if job fails
 - `--task-timeout=15m`: Maximum runtime (adjust based on media volume)
@@ -765,6 +765,72 @@ gcloud projects get-iam-policy $PROJECT_ID | grep datastore.user
 1. Verify GCS bucket has images: `gsutil ls gs://$PROJECT_ID-whatsapp-media/`
 2. Check face recognition matches in logs
 3. Verify known_people directory is populated in config
+
+### Firestore Index Warnings (Non-Critical)
+
+**Symptom**: Logs show warnings about missing Firestore composite indexes
+
+**Example**:
+```
+WARNING - Could not cleanup borderline events:
+The query requires a composite index that is not yet available...
+```
+
+**Why This Happens**:
+- Firestore composite indexes are needed for efficient cleanup of old alert events
+- The cleanup operation uses queries on `(alerted, created_ts)` fields
+- Indexes must be created manually or via `gcloud firestore indexes create`
+
+**Impact**: ✅ **Non-Critical - App handles gracefully**
+- Core functionality (face recognition, upload) works perfectly
+- Alert batching and sending works perfectly
+- Only affects cleanup of old alert event records (90+ days old)
+- The cleanup simply skips if indexes don't exist
+- No data loss, no errors visible to users
+
+**Solution (Optional)**:
+If you want to enable cleanup of old events, create the indexes:
+```bash
+# For borderline events
+gcloud firestore indexes composite create \
+  --collection-group=borderline_events \
+  --field-config field-path=alerted,order=ascending \
+  --field-config field-path=created_ts,order=ascending
+
+# For error events
+gcloud firestore indexes composite create \
+  --collection-group=error_events \
+  --field-config field-path=alerted,order=ascending \
+  --field-config field-path=created_ts,order=ascending
+```
+
+**Recommended**: Skip index creation unless your Firestore storage exceeds 100MB from event records.
+
+### OAuth Token Refresh in Read-Only Containers
+
+**How It Works**:
+- Cloud Run containers have read-only filesystems for security
+- When OAuth tokens expire, Google APIs automatically refresh them in-memory
+- The refresh is transparent and doesn't require writing to disk
+- Tokens are valid for ~1 hour; each Cloud Run execution refreshes as needed
+
+**Why token.json Never Updates**:
+- The code attempts to save refreshed tokens to disk (for local development compatibility)
+- In Cloud Run, this write fails silently with a debug log message
+- The in-memory refresh still works perfectly
+- This is by design and doesn't affect functionality
+
+**When to Update token.json Secret**:
+Only if you see "Token has been expired or revoked" errors:
+```bash
+# Generate fresh token locally
+python -m dmaf --config config.yaml  # Run once locally to refresh
+
+# Update secret
+gcloud secrets versions add dmaf-oauth-token --data-file=token.json
+```
+
+**Best Practice**: Tokens typically last 6-12 months before requiring manual refresh.
 
 ---
 
