@@ -1,0 +1,81 @@
+# DMAF Configuration - Cloud Deployment
+# This config is used by Cloud Run Job
+
+# WhatsApp incoming media from GCS bucket
+watch_dirs:
+  - "gs://dmaf-production-whatsapp-media"
+
+# Optional: Google Photos album to upload to (null = library root)
+google_photos_album_name: null  # "Family - Auto WhatsApp Imports"
+
+# Face Recognition Settings
+recognition:
+  # Backend: "insightface" for cloud deployment
+  backend: "insightface"
+
+  # Matching tolerance - lower = stricter
+  tolerance: 0.5
+
+  # Detection confidence threshold (insightface only)
+  det_thresh: 0.4
+
+  # Detection threshold for known_people images (training set)
+  det_thresh_known: 0.3
+
+  # Use only highest confidence face when multiple detected
+  return_best_only: true
+
+  # Minimum face size in pixels (skip tiny faces)
+  min_face_size_pixels: 80
+
+  # Only upload if at least one known face is detected
+  require_any_match: true
+
+  # Upload if ANY whitelisted person appears
+  allow_multiple_people: true
+
+# Known people reference images (will be in GCS in production)
+# For now, needs to be synced from local data/known_people to GCS or embedded in image
+known_people_dir: "./data/known_people"
+
+# Deduplication settings - Using Firestore for cloud
+dedup:
+  method: "sha256"
+  backend: "firestore"
+  firestore_project: "your-gcp-project-id"
+  firestore_collection: "dmaf_files"
+
+# Logging level
+log_level: "INFO"
+
+# Delete source files after successful upload (safe for WhatsApp-only folder)
+delete_source_after_upload: true
+
+# Delete unmatched files after processing (optional - be careful!)
+delete_unmatched_after_processing: false
+
+# Email Alerting & Observability
+alerting:
+  enabled: true
+
+  recipients:
+    - "your-email@example.com"
+
+  batch_interval_minutes: 60
+  borderline_offset: 0.1
+  event_retention_days: 90
+
+  smtp:
+    host: "smtp.gmail.com"
+    port: 587
+    username: "your-smtp-username@gmail.com"
+    password: "your-gmail-app-password"  # Get from Google Account → Security → App Passwords
+    use_tls: true
+    sender_email: "your-smtp-username@gmail.com"
+
+# Auto-Refresh Known People Training Images
+known_refresh:
+  enabled: true
+  interval_days: 60
+  target_score: 0.65
+  crop_padding_percent: 0.3

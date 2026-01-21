@@ -29,8 +29,9 @@ ENV/
 htmlcov/
 .tox/
 
-# Data and state (exclude from image)
+# Data and state (exclude from image, except known_people for training)
 data/
+!data/known_people/
 *.sqlite3
 *.db
 

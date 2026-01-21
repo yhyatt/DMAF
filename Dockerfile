@@ -2,6 +2,9 @@ FROM python:3.10-slim
 
 # Install system dependencies needed for image processing and face recognition
 RUN apt-get update && apt-get install -y \
+    # Build tools for compiling InsightFace Cython extensions
+    build-essential \
+    g++ \
     # For InsightFace and image processing
     libgomp1 \
     libglib2.0-0 \
@@ -17,6 +20,9 @@ COPY pyproject.toml README.md ./
 
 # Copy source code
 COPY src/ src/
+
+# Copy known people training images for face recognition
+COPY data/known_people/ data/known_people/
 
 # Install DMAF with InsightFace backend (lighter than face_recognition, no cmake needed)
 RUN pip install --no-cache-dir -e ".[insightface]" google-cloud-firestore

@@ -1,0 +1,74 @@
+# This file specifies files that are not uploaded to Google Cloud
+# See gcloud topic gcloudignore for more information
+
+# Ignore git and IDE files
+.git
+.gitignore
+.github/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Ignore Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Ignore virtual environments
+venv/
+.venv/
+ENV/
+env/
+
+# Ignore data directory EXCEPT known_people
+data/*
+!data/known_people/
+!data/known_people/**
+
+# Ignore secrets and tokens
+client_secret.json
+token.json
+config.yaml
+config.cloud.yaml
+lifecycle.json
+
+# Ignore documentation and tests (not needed in container)
+docs/
+tests/
+*.md
+!README.md
+
+# Ignore temporary files
+*.log
+*.tmp
+.DS_Store

@@ -593,6 +593,289 @@ class FirestoreDatabase:
         doc_id = self._hash_path(path)
         self.collection.document(doc_id).update({"uploaded": 1})
 
+    def add_borderline_event(
+        self,
+        file_path: str,
+        match_score: float,
+        tolerance: float,
+        matched_person: str | None,
+    ):
+        """Record a borderline recognition event in Firestore."""
+        from google.cloud import firestore
+
+        borderline_col = self.db.collection("borderline_events")
+        borderline_col.add(
+            {
+                "file_path": file_path,
+                "match_score": match_score,
+                "tolerance": tolerance,
+                "matched_person": matched_person,
+                "created_ts": firestore.SERVER_TIMESTAMP,
+                "alerted": 0,
+            }
+        )
+
+    def add_error_event(
+        self,
+        error_type: str,
+        error_message: str,
+        file_path: str | None = None,
+    ):
+        """Record a processing or upload error event in Firestore."""
+        from google.cloud import firestore
+
+        error_col = self.db.collection("error_events")
+        error_col.add(
+            {
+                "error_type": error_type,
+                "error_message": error_message,
+                "file_path": file_path,
+                "created_ts": firestore.SERVER_TIMESTAMP,
+                "alerted": 0,
+            }
+        )
+
+    def get_pending_alerts(self, alert_type: str) -> list[dict]:
+        """
+        Get un-alerted events of specified type from Firestore.
+
+        Args:
+            alert_type: 'borderline' or 'error'
+
+        Returns:
+            List of event dictionaries with all fields
+        """
+        try:
+            if alert_type == "borderline":
+                col = self.db.collection("borderline_events")
+                docs = col.where("alerted", "==", 0).order_by("created_ts").stream()
+                return [
+                    {
+                        "id": doc.id,
+                        "file_path": doc.to_dict().get("file_path"),
+                        "match_score": doc.to_dict().get("match_score"),
+                        "tolerance": doc.to_dict().get("tolerance"),
+                        "matched_person": doc.to_dict().get("matched_person"),
+                        "created_ts": doc.to_dict().get("created_ts"),
+                    }
+                    for doc in docs
+                ]
+            elif alert_type == "error":
+                col = self.db.collection("error_events")
+                docs = col.where("alerted", "==", 0).order_by("created_ts").stream()
+                return [
+                    {
+                        "id": doc.id,
+                        "error_type": doc.to_dict().get("error_type"),
+                        "error_message": doc.to_dict().get("error_message"),
+                        "file_path": doc.to_dict().get("file_path"),
+                        "created_ts": doc.to_dict().get("created_ts"),
+                    }
+                    for doc in docs
+                ]
+            else:
+                raise ValueError(f"Unknown alert_type: {alert_type}")
+        except Exception:
+            # Collection doesn't exist yet or query error
+            return []
+
+    def mark_events_alerted(self, event_ids: list[str], alert_type: str):
+        """
+        Mark events as included in an alert in Firestore.
+
+        Args:
+            event_ids: List of document IDs to mark
+            alert_type: 'borderline' or 'error'
+        """
+        if not event_ids:
+            return
+
+        try:
+            col_name = "borderline_events" if alert_type == "borderline" else "error_events"
+            col = self.db.collection(col_name)
+            for doc_id in event_ids:
+                col.document(doc_id).update({"alerted": 1})
+        except Exception:
+            # Collection doesn't exist or update failed
+            pass
+
+    def get_last_alert_time(self) -> datetime | None:
+        """
+        Get timestamp of last sent alert from Firestore.
+
+        Returns None if no alerts have been sent.
+        """
+
+        from google.cloud import firestore
+
+        try:
+            alert_col = self.db.collection("alert_batches")
+            docs = (
+                alert_col.order_by("sent_ts", direction=firestore.Query.DESCENDING)
+                .limit(1)
+                .stream()
+            )
+            for doc in docs:
+                data = doc.to_dict()
+                sent_ts = data.get("sent_ts")
+                if sent_ts:
+                    return sent_ts
+            return None
+        except Exception:
+            # Collection doesn't exist yet
+            return None
+
+    def record_alert_sent(
+        self,
+        alert_type: str,
+        recipient: str,
+        event_count: int,
+    ):
+        """
+        Record that an alert batch was sent in Firestore.
+
+        Args:
+            alert_type: Type of alert ('borderline', 'error', 'combined')
+            recipient: Email address that received the alert
+            event_count: Number of events included in alert
+        """
+        from google.cloud import firestore
+
+        alert_col = self.db.collection("alert_batches")
+        alert_col.add(
+            {
+                "alert_type": alert_type,
+                "recipient": recipient,
+                "event_count": event_count,
+                "sent_ts": firestore.SERVER_TIMESTAMP,
+            }
+        )
+
+    def get_refresh_candidates(
+        self,
+        person_name: str,
+        target_score: float,
+    ) -> list[dict]:
+        """
+        Get candidate files for known_people refresh from Firestore.
+
+        Note: Simplified implementation - doesn't track refresh_history yet.
+        Returns empty list to skip refresh functionality for now.
+        """
+        # TODO: Implement proper refresh history tracking in Firestore
+        # For now, return empty list to skip refresh functionality
+        return []
+
+    def get_last_refresh_time(self) -> datetime | None:
+        """
+        Get timestamp of last refresh operation from Firestore.
+
+        Returns None if no refresh has ever been performed.
+        """
+
+        from google.cloud import firestore
+
+        try:
+            refresh_col = self.db.collection("known_refresh_history")
+            # Get most recent refresh record
+            docs = (
+                refresh_col.order_by("created_ts", direction=firestore.Query.DESCENDING)
+                .limit(1)
+                .stream()
+            )
+            for doc in docs:
+                data = doc.to_dict()
+                created_ts = data.get("created_ts")
+                if created_ts:
+                    return created_ts
+            return None
+        except Exception:
+            # Collection doesn't exist yet or query error
+            return None
+
+    def add_refresh_record(
+        self,
+        person_name: str,
+        source_file_path: str,
+        target_file_path: str,
+        match_score: float,
+        target_score: float,
+    ):
+        """
+        Record a refresh operation in Firestore.
+        """
+        from google.cloud import firestore
+
+        refresh_col = self.db.collection("known_refresh_history")
+        refresh_col.add(
+            {
+                "person_name": person_name,
+                "source_file_path": source_file_path,
+                "target_file_path": target_file_path,
+                "match_score": match_score,
+                "target_score": target_score,
+                "created_ts": firestore.SERVER_TIMESTAMP,
+            }
+        )
+
+    def cleanup_old_events(self, retention_days: int) -> tuple[int, int]:
+        """
+        Delete alerted events older than retention_days from Firestore.
+
+        Note: Requires composite indexes on (alerted, created_ts) for both collections.
+        If indexes don't exist, this method gracefully skips cleanup.
+
+        Args:
+            retention_days: Delete events older than this many days
+
+        Returns:
+            Tuple of (borderline_deleted_count, errors_deleted_count)
+        """
+        import logging
+        from datetime import datetime, timedelta
+
+        from google.cloud import firestore
+
+        logger = logging.getLogger(__name__)
+        cutoff_ts = datetime.now() - timedelta(days=retention_days)
+
+        borderline_count = 0
+        errors_count = 0
+
+        try:
+            # Delete old borderline events (only alerted ones)
+            # Requires composite index: (alerted, created_ts)
+            borderline_col = self.db.collection("borderline_events")
+            borderline_query = (
+                borderline_col.where(filter=firestore.FieldFilter("alerted", "==", 1))
+                .where(filter=firestore.FieldFilter("created_ts", "<", cutoff_ts))
+                .stream()
+            )
+            for doc in borderline_query:
+                doc.reference.delete()
+                borderline_count += 1
+        except Exception as e:
+            # Likely missing index or collection doesn't exist yet
+            logger.warning(f"Could not cleanup borderline events: {e}")
+
+        try:
+            # Delete old error events (only alerted ones)
+            # Requires composite index: (alerted, created_ts)
+            error_col = self.db.collection("error_events")
+            error_query = (
+                error_col.where(filter=firestore.FieldFilter("alerted", "==", 1))
+                .where(filter=firestore.FieldFilter("created_ts", "<", cutoff_ts))
+                .stream()
+            )
+            for doc in error_query:
+                doc.reference.delete()
+                errors_count += 1
+        except Exception as e:
+            # Likely missing index or collection doesn't exist yet
+            logger.warning(f"Could not cleanup error events: {e}")
+
+        return (borderline_count, errors_count)
+
     def close(self):
         """No-op for Firestore (connections managed automatically)."""
         pass

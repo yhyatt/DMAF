@@ -28,8 +28,15 @@ def get_creds(
         else:
             flow = InstalledAppFlow.from_client_secrets_file(client_secret_path, SCOPES)
             creds = flow.run_local_server(port=0)
-        with open(token_path, "w") as f:
-            f.write(creds.to_json())
+        # Try to save refreshed token (gracefully handle read-only filesystems)
+        try:
+            with open(token_path, "w") as f:
+                f.write(creds.to_json())
+        except OSError as e:
+            # Read-only filesystem in cloud deployment - token refresh is in-memory only
+            import logging
+
+            logging.getLogger(__name__).debug(f"Could not write token file (read-only): {e}")
     return creds
 
 

@@ -31,6 +31,13 @@ client_secrets.json
 credentials.json
 token.json
 config.yaml
+config.cloud.yaml
+
+# Cloud deployment temporary files
+lifecycle.json
+
+# Claude Code personal settings
+.claude/
 
 # Data directory (personal photos and runtime state)
 data/
