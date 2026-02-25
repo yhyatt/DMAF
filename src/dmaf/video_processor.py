@@ -5,9 +5,15 @@ Streams frames from video files and runs face recognition,
 stopping as soon as a known face is found.
 """
 
+from __future__ import annotations
+
 import logging
 from collections.abc import Generator
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import numpy as np
 
 # cv2 and numpy are optional heavy dependencies — imported lazily inside
 # functions so that the module can be imported even when they are not installed
@@ -46,7 +52,7 @@ def get_video_mime_type(path: str | Path) -> str:
 
 def iter_frames(
     video_path: Path, fps: float = 1.0
-) -> Generator[tuple[float, "np.ndarray"], None, None]:
+) -> Generator[tuple[float, np.ndarray], None, None]:
     """
     Yield frames from a video one at a time (generator).
 
@@ -96,7 +102,7 @@ def iter_frames(
         cap.release()
 
 
-def extract_frames(video_path: Path, fps: float = 1.0) -> list[tuple[float, "np.ndarray"]]:
+def extract_frames(video_path: Path, fps: float = 1.0) -> list[tuple[float, np.ndarray]]:
     """
     Extract all sampled frames into a list.
 

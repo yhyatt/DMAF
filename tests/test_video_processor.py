@@ -16,7 +16,6 @@ import cv2  # noqa: E402
 import numpy as np  # noqa: E402
 
 from dmaf.video_processor import (
-    VIDEO_EXTENSIONS,
     extract_frames,
     find_face_in_video,
     get_video_mime_type,
@@ -26,9 +25,8 @@ from dmaf.video_processor import (
 
 def _make_test_video(duration_s: float = 5.0, fps: float = 10.0) -> Path:
     """Create a small synthetic video file for testing."""
-    tmp = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
-    tmp.close()
-    path = Path(tmp.name)
+    with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp:
+        path = Path(tmp.name)
 
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
     writer = cv2.VideoWriter(str(path), fourcc, fps, (64, 64))
@@ -178,8 +176,10 @@ class TestFindFaceInVideo:
 
 class TestListGcsVideos:
     def test_filters_video_extensions(self):
-        def make_blob(name):
-            return MagicMock(name=name, **{"name": name})
+        def make_blob(blob_name):
+            m = MagicMock()
+            m.name = blob_name
+            return m
 
         blobs = [
             make_blob("prefix/clip.mp4"),
