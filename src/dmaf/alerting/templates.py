@@ -4,33 +4,38 @@ Email content templates for alerts.
 
 from __future__ import annotations
 
+from datetime import datetime
 
-def _format_ts(ts: object, tz_name: str = "UTC") -> str:
+
+def _format_ts(ts: datetime | str | None, tz_name: str = "UTC") -> str:
     """Format a Firestore datetime in the configured timezone.
 
     Args:
-        ts: A datetime object (or plain string / None from tests).
+        ts: A ``datetime`` (Firestore ``SERVER_TIMESTAMP``), a plain string
+            (used in tests), or ``None``.
         tz_name: IANA timezone name, e.g. ``'UTC'``, ``'Asia/Jerusalem'``,
             ``'America/New_York'``.  Comes from ``alerting.timezone`` in
             the DMAF config — never hardcoded.
 
     Example output: ``'2026-02-25 22:07 UTC+2 (Asia/Jerusalem)'``
-    Falls back gracefully if ts is None or an unexpected type.
+    Falls back gracefully for strings (passed through) and None.
     """
     if ts is None:
         return "unknown"
+    # Plain strings (e.g. from tests) — pass through unchanged.
+    if not isinstance(ts, datetime):
+        return str(ts)[:57]
     try:
-        if not hasattr(ts, "astimezone"):
-            return str(ts)[:57]
         from zoneinfo import ZoneInfo
 
         tz = ZoneInfo(tz_name)
         local = ts.astimezone(tz)
-        offset_h = int(local.utcoffset().total_seconds() // 3600)
+        offset = local.utcoffset()
+        offset_h = int(offset.total_seconds() // 3600) if offset is not None else 0
         label = f"UTC{offset_h:+d} ({tz_name})"
         return local.strftime(f"%Y-%m-%d %H:%M {label}")
     except Exception:
-        return str(ts)[:57]
+        return ts.strftime("%Y-%m-%d %H:%M UTC")
 
 
 def format_borderline_alert(events: list[dict], tz_name: str = "UTC") -> tuple[str, str | None]:
