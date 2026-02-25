@@ -745,7 +745,9 @@ class FirestoreDatabase:
                 data = doc.to_dict()
                 sent_ts = data.get("sent_ts")
                 if sent_ts:
-                    return sent_ts
+                    return datetime(sent_ts.year, sent_ts.month, sent_ts.day,
+                                    sent_ts.hour, sent_ts.minute, sent_ts.second,
+                                    sent_ts.microsecond, tzinfo=sent_ts.tzinfo)
             return None
         except Exception:
             # Collection doesn't exist yet
@@ -813,7 +815,9 @@ class FirestoreDatabase:
                 data = doc.to_dict()
                 created_ts = data.get("created_ts")
                 if created_ts:
-                    return created_ts
+                    return datetime(created_ts.year, created_ts.month, created_ts.day,
+                                    created_ts.hour, created_ts.minute, created_ts.second,
+                                    created_ts.microsecond, tzinfo=created_ts.tzinfo)
             return None
         except Exception:
             # Collection doesn't exist yet or query error
