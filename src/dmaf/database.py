@@ -588,6 +588,32 @@ class FirestoreDatabase:
             merge=True,  # Update if exists (like INSERT OR IGNORE)
         )
 
+    def add_file_with_score(
+        self,
+        path: str,
+        sha256: str | None,
+        matched: int,
+        uploaded: int,
+        match_score: float | None = None,
+        matched_person: str | None = None,
+    ):
+        """Add a new file record with match score information to Firestore."""
+        from google.cloud import firestore
+
+        doc_id = self._hash_path(path)
+        self.collection.document(doc_id).set(
+            {
+                "path": path,
+                "sha256": sha256,
+                "matched": matched,
+                "uploaded": uploaded,
+                "match_score": match_score,
+                "matched_person": matched_person,
+                "created_at": firestore.SERVER_TIMESTAMP,
+            },
+            merge=True,
+        )
+
     def mark_uploaded(self, path: str):
         """Mark a file as uploaded to Google Photos."""
         doc_id = self._hash_path(path)
