@@ -21,8 +21,7 @@ COPY pyproject.toml README.md ./
 # Copy source code
 COPY src/ src/
 
-# Copy known people training images for face recognition
-COPY data/known_people/ data/known_people/
+# Known people images are downloaded from GCS at runtime via known_people_gcs_uri
 
 # Install DMAF with InsightFace backend (lighter than face_recognition, no cmake needed)
 RUN pip install --no-cache-dir -e ".[insightface,gcs]" google-cloud-firestore

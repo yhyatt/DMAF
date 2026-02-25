@@ -240,6 +240,10 @@ class Settings(BaseSettings):
         default=Path("./known_people"),
         description="Directory containing known face images",
     )
+    known_people_gcs_uri: str | None = Field(
+        default=None,
+        description="GCS URI to download known_people reference images from (e.g. gs://bucket/prefix). Downloaded to known_people_dir at startup.",
+    )
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = Field(
         default="INFO",
         description="Logging level",
@@ -301,9 +305,12 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def validate_paths(self) -> "Settings":
         """Validate that required paths exist or can be created."""
-        # known_people_dir should exist
         if not self.known_people_dir.exists():
-            raise ValueError(f"known_people_dir does not exist: {self.known_people_dir}")
+            if self.known_people_gcs_uri:
+                # Will be populated at startup from GCS
+                self.known_people_dir.mkdir(parents=True, exist_ok=True)
+            else:
+                raise ValueError(f"known_people_dir does not exist: {self.known_people_dir}")
         return self
 
     @classmethod

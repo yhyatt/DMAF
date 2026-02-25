@@ -3,7 +3,7 @@ Alert manager for batching and sending email notifications.
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from dmaf.alerting.email_sender import EmailSender
 from dmaf.alerting.templates import (
@@ -85,7 +85,7 @@ class AlertManager:
             return len(borderline) > 0 or len(errors) > 0
 
         # Check if enough time has passed since last alert
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         time_since_last = now - last_alert
         interval = timedelta(minutes=self.config.batch_interval_minutes)
 
