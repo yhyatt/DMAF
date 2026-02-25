@@ -19,9 +19,9 @@ Complete setup guide for deploying DMAF (Don't Miss A Face) with all features en
 - **Python 3.10+** - Check with `python --version`
 - **Google Cloud Project** with Photos Library API enabled
 - **WhatsApp media access** via one of:
-  - **Dropbox Camera Upload** (iOS/Android) - Recommended, see [WhatsApp Media Sync Setup](#whatsapp-media-sync-setup)
+  - **[OpenClaw](https://openclaw.ai) integration** (iPhone/Android) — ⭐ Recommended, see [`deploy/openclaw-integration.md`](deploy/openclaw-integration.md)
+  - **WhatsApp Desktop + rclone** (iOS/Android) — Cross-platform, zero duplicates
   - **Android file sync** (Syncthing, FolderSync, etc.)
-  - **WhatsApp Desktop** media folder
   - **WSL file system** mount (Windows)
 
 ### Optional (for Email Alerts)
@@ -646,7 +646,9 @@ delete_unmatched_after_processing: true  # Safe - WhatsApp folder only
 
 ### 1. Add Reference Photos
 
-Create directories for each person:
+> **Cloud deployment?** For cloud (GCS + Cloud Run), reference photos go to a GCS bucket instead of the local directory. Set `known_people_gcs_uri: "gs://your-bucket"` in your cloud config. See [`deploy/README.md`](deploy/README.md#step-75-upload-known-people-reference-photos) for details.
+
+**For local development**, create directories for each person:
 ```bash
 mkdir -p data/known_people/Alice
 mkdir -p data/known_people/Bob

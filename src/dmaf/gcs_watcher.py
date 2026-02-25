@@ -119,3 +119,59 @@ def cleanup_temp_file(local_path: Path) -> None:
 def is_gcs_uri(path: str | Path) -> bool:
     """Check if a path is a GCS URI. Accepts str or Path (Path.as_posix() preserves slashes)."""
     return str(path).startswith("gs://")
+
+
+def download_known_people(gcs_uri: str, local_dir: Path) -> int:
+    """
+    Download known_people reference images from GCS to a local directory.
+    Preserves subdirectory structure (person name folders).
+    Returns number of files downloaded.
+    """
+    client = _get_storage_client()
+    bucket_name, prefix = parse_gcs_uri(gcs_uri)
+    bucket = client.bucket(bucket_name)
+
+    # Ensure prefix ends with /
+    if prefix and not prefix.endswith("/"):
+        prefix += "/"
+
+    local_dir.mkdir(parents=True, exist_ok=True)
+    count = 0
+    failed = 0
+    seen_people: set[str] = set()
+
+    for blob in bucket.list_blobs(prefix=prefix):
+        # Get relative path from prefix
+        rel_path = blob.name[len(prefix):]
+        if not rel_path or rel_path.endswith("/"):
+            continue
+
+        # Skip Zone.Identifier files (Windows alternate data streams) — consistent
+        # with the rest of the codebase which checks `"Zone.Identifier" in name`
+        if "Zone.Identifier" in rel_path:
+            continue
+
+        # Skip non-image files
+        if Path(rel_path).suffix.lower() not in IMAGE_EXTENSIONS:
+            continue
+
+        # Recreate subdirectory structure
+        local_path = local_dir / rel_path
+        local_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Log person folder discovery
+        person = rel_path.split("/")[0] if "/" in rel_path else None
+        if person and person not in seen_people:
+            seen_people.add(person)
+            logger.info(f"Downloading reference images for: {person}")
+
+        try:
+            blob.download_to_filename(str(local_path))
+            count += 1
+        except Exception as e:
+            failed += 1
+            logger.warning(f"Failed to download reference image {blob.name}: {e}")
+
+    if failed:
+        logger.warning(f"Downloaded {count} reference images ({failed} failed)")
+    return count

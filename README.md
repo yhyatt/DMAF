@@ -160,6 +160,8 @@ pip install -e ".[all]"  # All backends
    ```
 
 2. **Add reference photos of people to recognize**
+
+   **For local development:**
    ```
    data/known_people/
    ├── Alice/
@@ -168,6 +170,12 @@ pip install -e ".[all]"  # All backends
    └── Bob/
        └── photo1.jpg
    ```
+
+   **For cloud deployment:** Upload reference photos to a GCS bucket instead:
+   ```bash
+   gsutil -m rsync -r -x ".*Zone\.Identifier$" data/known_people/ gs://your-bucket/
+   ```
+   Then set `known_people_gcs_uri: "gs://your-bucket"` in your cloud config.
 
 3. **Create your configuration**
    ```bash
@@ -203,10 +211,11 @@ graph LR
 ```
 
 1. **Watch** - DMAF monitors your configured WhatsApp media directories for new images
-2. **Detect** - Each new image is analyzed for faces using your chosen backend
-3. **Recognize** - Detected faces are compared against your known people database
-4. **Upload** - Images containing recognized faces are uploaded to Google Photos
-5. **Deduplicate** - SHA256 hashing ensures no image is ever processed twice
+2. **Load Known Faces** - Reference photos loaded from local directory or downloaded from GCS bucket (cloud deployment)
+3. **Detect** - Each new image is analyzed for faces using your chosen backend
+4. **Recognize** - Detected faces are compared against your known people database
+5. **Upload** - Images containing recognized faces are uploaded to Google Photos
+6. **Deduplicate** - SHA256 hashing ensures no image is ever processed twice
 
 ---
 
@@ -232,8 +241,11 @@ recognition:
   require_any_match: true       # Only upload if known face found
   return_best_only: true        # Use highest confidence face per image
 
-# Known people directory
+# Known people directory (local development)
 known_people_dir: "./data/known_people"
+
+# Known people GCS bucket (cloud deployment — overrides known_people_dir)
+# known_people_gcs_uri: "gs://your-bucket"
 
 # Deduplication database
 dedup:
@@ -344,10 +356,10 @@ black --check src/
 - [x] **Phase D+**: Advanced detection tuning & FPR analysis ✅
 - [x] **Phase E**: CI/CD (GitHub Actions, automated testing) ✅
 - [x] **Phase F-prep**: Observability & auto-refresh (alerts, score tracking, AuraFace backend) ✅ **NEW**
-- [ ] **Phase F**: Cloud deployment (GCS + Cloud Run) 🚧
-- [ ] **Phase G**: Docker support & documentation 📝
+- [x] **Phase F**: Cloud deployment (GCS + Cloud Run + Firestore) ✅
+- [ ] **Phase G**: Documentation & open-source 🚧
 
-**Current Progress:** 80% complete (7 of 9 phases done)
+**Current Progress:** ~90% complete (8 of 9 phases done)
 
 ---
 

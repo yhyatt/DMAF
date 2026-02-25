@@ -325,6 +325,44 @@ gcloud scheduler jobs describe dmaf-schedule --location=us-central1
 
 ---
 
+## Step 7.5: Upload Known People Reference Photos
+
+Reference photos are stored in a private GCS bucket and downloaded by DMAF at container startup.
+
+### Create the bucket
+
+```bash
+gsutil mb -p $PROJECT_ID -l us-central1 gs://$PROJECT_ID-known-people
+```
+
+### Upload your curated reference photos (one subdirectory per person)
+
+```bash
+gsutil -m rsync -r -x ".*Zone\.Identifier$" data/known_people/ gs://$PROJECT_ID-known-people/
+```
+
+### Grant the service account read access
+
+```bash
+gsutil iam ch serviceAccount:dmaf-runner@$PROJECT_ID.iam.gserviceaccount.com:objectViewer gs://$PROJECT_ID-known-people
+```
+
+### Add to your config.cloud.yaml
+
+```yaml
+known_people_gcs_uri: "gs://your-project-known-people"
+```
+
+Then update the config secret:
+
+```bash
+gcloud secrets versions add dmaf-config --data-file=config.cloud.yaml
+```
+
+**To update reference photos later**, just re-run the `gsutil rsync` command — no Docker rebuild needed.
+
+---
+
 ## Step 8: Sync WhatsApp Media to GCS
 
 You need a method to sync WhatsApp media from your phone to the GCS bucket.
@@ -788,6 +826,18 @@ docker run gcr.io/$PROJECT_ID/dmaf:latest \
 gcloud firestore databases list
 gcloud projects get-iam-policy $PROJECT_ID | grep datastore.user
 ```
+
+### No Matches Found / 0 Uploaded
+
+**Symptom**: Job runs but finds no face matches (0 uploaded)
+
+**Solution**:
+1. Verify `known_people_gcs_uri` is set in your `config.cloud.yaml`
+2. Verify GCS bucket has reference photos: `gsutil ls gs://$PROJECT_ID-known-people/`
+3. Verify reference photos are organized as subdirectories per person (e.g., `Alice/photo1.jpg`)
+4. Check logs for "Downloaded N known_people" message at startup
+5. Verify GCS media bucket has images: `gsutil ls gs://$PROJECT_ID-whatsapp-media/`
+6. Check face recognition matches in logs
 
 ### No Images Being Processed
 

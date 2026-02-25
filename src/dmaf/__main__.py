@@ -130,6 +130,19 @@ def main(argv: list[str] | None = None) -> int:
     else:
         raise ValueError(f"Unknown database backend: {settings.dedup.backend}")
 
+    # Download known_people from GCS if configured
+    if settings.known_people_gcs_uri:
+        from dmaf.gcs_watcher import download_known_people
+
+        logger.info(f"Downloading known_people from {settings.known_people_gcs_uri}...")
+        count = download_known_people(settings.known_people_gcs_uri, settings.known_people_dir)
+        logger.info(f"Downloaded {count} reference images")
+        if count == 0:
+            logger.warning(
+                "No reference images were downloaded from GCS. "
+                "Face recognition may not function as expected."
+            )
+
     logger.info(f"Using face recognition backend: {settings.recognition.backend}")
 
     # Initialize alert manager if enabled
