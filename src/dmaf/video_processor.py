@@ -1,11 +1,12 @@
 """
 Video processing for face recognition.
 
-Extracts frames from video files and runs face recognition,
+Streams frames from video files and runs face recognition,
 stopping as soon as a known face is found.
 """
 
 import logging
+from collections.abc import Generator
 from pathlib import Path
 
 import cv2
@@ -31,21 +32,34 @@ def is_video_file(path: str | Path) -> bool:
 
 
 def get_video_mime_type(path: str | Path) -> str:
-    """Get the MIME type for a video file based on its extension."""
+    """
+    Get the MIME type for a video file based on its extension.
+
+    Note:
+        Not used by the Google Photos upload flow, which sends raw bytes
+        without a content-type header. Kept here for documentation and
+        potential future use if MIME-type-specific behaviour is needed.
+    """
     return VIDEO_MIME_TYPES.get(Path(path).suffix.lower(), "video/mp4")
 
 
-def extract_frames(video_path: Path, fps: float = 1.0) -> list[tuple[float, np.ndarray]]:
+def iter_frames(
+    video_path: Path, fps: float = 1.0
+) -> Generator[tuple[float, np.ndarray], None, None]:
     """
-    Extract frames from a video at the given fps rate.
-    For clips shorter than 10s, uses 2fps instead.
+    Yield frames from a video one at a time (generator).
 
-    Returns list of (timestamp_seconds, frame_rgb_array).
+    For clips shorter than 10s, samples at 2fps instead of the given fps.
+    Yields (timestamp_seconds, frame_rgb_array) and releases the capture
+    handle when the caller stops consuming or the video ends.
+
+    Using a generator means find_face_in_video can stop extraction the
+    moment a match is found — no wasted memory or CPU on remaining frames.
     """
     cap = cv2.VideoCapture(str(video_path))
     if not cap.isOpened():
         logger.warning(f"Cannot open video: {video_path}")
-        return []
+        return
 
     try:
         video_fps = cap.get(cv2.CAP_PROP_FPS)
@@ -53,33 +67,34 @@ def extract_frames(video_path: Path, fps: float = 1.0) -> list[tuple[float, np.n
 
         if video_fps <= 0:
             logger.warning(f"Invalid FPS for {video_path}")
-            return []
+            return
 
         duration = total_frames / video_fps
-
-        # For short clips (<10s), sample at 2fps
         sample_fps = 2.0 if duration < 10.0 else fps
-
         frame_interval = max(1, int(video_fps / sample_fps))
-        frames: list[tuple[float, np.ndarray]] = []
         frame_idx = 0
 
         while True:
             ret, frame = cap.read()
             if not ret:
                 break
-
             if frame_idx % frame_interval == 0:
                 timestamp = frame_idx / video_fps
-                # Convert BGR to RGB
-                rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                frames.append((timestamp, rgb_frame))
-
+                yield timestamp, cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             frame_idx += 1
-
-        return frames
     finally:
         cap.release()
+
+
+def extract_frames(video_path: Path, fps: float = 1.0) -> list[tuple[float, np.ndarray]]:
+    """
+    Extract all sampled frames into a list.
+
+    Convenience wrapper around iter_frames for callers (e.g. tests) that
+    need the full frame list upfront. Production code should prefer
+    iter_frames directly to benefit from early-exit memory savings.
+    """
+    return list(iter_frames(video_path, fps))
 
 
 def find_face_in_video(
@@ -89,28 +104,27 @@ def find_face_in_video(
     """
     Scan video frames for known faces. Stops on first match.
 
+    Frames are streamed one at a time via iter_frames — when a match is
+    found the generator is abandoned immediately, so no further frames
+    are decoded or held in memory.
+
     Args:
-        video_path: Path to the video file
-        process_fn: Callable that takes np_img and returns
-                    (matched, who, scores) or (matched, who)
+        video_path: Path to the video file.
+        process_fn: Callable (np_img) -> (matched, who, scores) or
+                    (matched, who).
 
     Returns:
         (matched, who, best_score, match_timestamp_seconds)
     """
     try:
-        frames = extract_frames(video_path)
+        frame_gen = iter_frames(video_path)
     except Exception as e:
-        logger.warning(f"Failed to extract frames from {video_path}: {e}")
+        logger.warning(f"Failed to open video {video_path}: {e}")
         return (False, [], None, None)
 
-    if not frames:
-        logger.warning(f"No frames extracted from {video_path}")
-        return (False, [], None, None)
-
-    for timestamp, frame in frames:
+    for timestamp, frame in frame_gen:
         try:
             result = process_fn(frame)
-
             if len(result) == 3:
                 matched, who, scores = result
             else:
@@ -122,6 +136,7 @@ def find_face_in_video(
                 logger.info(
                     f"Face match in video {video_path.name} at {timestamp:.1f}s -> {who}"
                 )
+                frame_gen.close()  # stop the generator, release cap immediately
                 return (True, who, best_score, timestamp)
         except Exception as e:
             logger.warning(f"Error processing frame at {timestamp:.1f}s: {e}")

@@ -225,6 +225,65 @@ def _process_image_file(
     return is_matched, had_error
 
 
+def _process_video_file(
+    video_path: Path,
+    dedup_key: str,
+    handler,
+    logger: logging.Logger,
+) -> tuple[bool, bool]:
+    """
+    Process a single video file through face recognition and upload pipeline.
+
+    Mirrors _process_image_file but uses find_face_in_video (which streams
+    frames and exits on first match) instead of per-image recognition.
+
+    Args:
+        video_path: Local path to the video file.
+        dedup_key: Deduplication key (GCS URI or local path string).
+        handler: NewImageHandler with process_fn, db_conn, cfg, alert_manager.
+        logger: Logger instance.
+
+    Returns:
+        (was_matched, had_error) tuple.
+    """
+    from dmaf.video_processor import find_face_in_video
+
+    vid_matched, who, best_score, match_ts = find_face_in_video(
+        video_path, handler.process_fn
+    )
+
+    best_person = who[0] if who else None
+    h = sha256_of_file(video_path)
+
+    handler.db_conn.add_file_with_score(
+        dedup_key,
+        h,
+        int(vid_matched),
+        0,
+        best_score,
+        best_person if vid_matched else None,
+    )
+
+    had_error = False
+    if vid_matched:
+        ts_str = f" at {match_ts:.1f}s" if match_ts is not None else ""
+        logger.info(f"Video match {Path(dedup_key).name} -> {who}{ts_str}")
+        try:
+            if "dedup_key" in inspect.signature(handler.on_match_video).parameters:
+                handler.on_match_video(video_path, who, dedup_key=dedup_key)
+            else:
+                handler.on_match_video(video_path, who)
+        except Exception as e:
+            had_error = True
+            logger.error(f"Video upload failed for {Path(dedup_key).name}: {e}")
+            if handler.alert_manager:
+                handler.alert_manager.record_error("upload", str(e), dedup_key)
+    else:
+        logger.info(f"No match in video {Path(dedup_key).name}")
+
+    return vid_matched, had_error
+
+
 def scan_and_process_once(dirs, handler) -> ScanResult:
     """
     Scan all directories once, process new images, then exit.
@@ -249,7 +308,7 @@ def scan_and_process_once(dirs, handler) -> ScanResult:
         list_gcs_images,
         list_gcs_videos,
     )
-    from dmaf.video_processor import find_face_in_video, is_video_file
+    from dmaf.video_processor import is_video_file
 
     logger = logging.getLogger(__name__)
 
@@ -312,44 +371,14 @@ def scan_and_process_once(dirs, handler) -> ScanResult:
                 local_path = None
                 try:
                     local_path = download_gcs_blob(gcs_video_path)
-                    vid_matched, who, best_score, match_ts = find_face_in_video(
-                        local_path, handler.process_fn
+                    is_matched, had_error = _process_video_file(
+                        local_path, gcs_video_path, handler, logger
                     )
                     processed += 1
-
-                    best_person = who[0] if who else None
-                    h = sha256_of_file(local_path)
-
-                    handler.db_conn.add_file_with_score(
-                        gcs_video_path,
-                        h,
-                        int(vid_matched),
-                        0,
-                        best_score,
-                        best_person if vid_matched else None,
-                    )
-
-                    if vid_matched:
+                    if is_matched:
                         matched += 1
-                        logger.info(
-                            f"Video match {Path(gcs_video_path).name} -> {who} "
-                            f"at {match_ts:.1f}s"
-                        )
-                        try:
-                            handler.on_match_video(
-                                local_path, who, dedup_key=gcs_video_path
-                            )
-                        except Exception as e:
-                            logger.error(
-                                f"Video upload failed for {Path(gcs_video_path).name}: {e}"
-                            )
-                            errors += 1
-                            if handler.alert_manager:
-                                handler.alert_manager.record_error(
-                                    "upload", str(e), gcs_video_path
-                                )
-                    else:
-                        logger.info(f"No match in video {Path(gcs_video_path).name}")
+                    if had_error:
+                        errors += 1
                 except Exception as e:
                     logger.error(f"Error processing video {gcs_video_path}: {e}")
                     errors += 1
@@ -411,32 +440,21 @@ def scan_and_process_once(dirs, handler) -> ScanResult:
 
                 new_files += 1
                 try:
-                    vid_matched, who, best_score, match_ts = find_face_in_video(
-                        video_path, handler.process_fn
+                    is_matched, had_error = _process_video_file(
+                        video_path, dedup_key, handler, logger
                     )
                     processed += 1
-
-                    best_person = who[0] if who else None
-                    h = sha256_of_file(video_path)
-
-                    handler.db_conn.add_file_with_score(
-                        dedup_key, h, int(vid_matched), 0, best_score,
-                        best_person if vid_matched else None,
-                    )
-
-                    if vid_matched:
+                    if is_matched:
                         matched += 1
-                        logger.info(f"Video match {video_path.name} -> {who}")
-                        try:
-                            handler.on_match_video(video_path, who, dedup_key=dedup_key)
-                        except Exception as e:
-                            logger.error(f"Video upload failed for {video_path.name}: {e}")
-                            errors += 1
-                    else:
-                        logger.info(f"No match in video {video_path.name}")
+                    if had_error:
+                        errors += 1
                 except Exception as e:
                     logger.error(f"Error processing video {video_path.name}: {e}")
                     errors += 1
+                    if handler.alert_manager:
+                        handler.alert_manager.record_error(
+                            "processing", str(e), dedup_key
+                        )
 
     success = errors == 0 and processed == new_files
 
