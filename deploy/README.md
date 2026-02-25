@@ -327,7 +327,7 @@ gcloud scheduler jobs describe dmaf-schedule --location=us-central1
 
 ## Step 7.5: Upload Known People Reference Photos
 
-Reference photos are **no longer baked into the Docker image**. Instead, upload them to a private GCS bucket and DMAF downloads them at container startup.
+Reference photos are stored in a private GCS bucket and downloaded by DMAF at container startup.
 
 ### Create the bucket
 

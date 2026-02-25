@@ -27,17 +27,15 @@ Example: "Staging all changes including deletions with `git add -A` to commit Ph
 - **Python 3.10+**: Modern type hints (`list[Path]` not `List[Path]`)
 
 ### Known People Reference Photos
-- **Cloud deployment**: Reference photos stored in a GCS bucket, NOT baked into the Docker image
+- **Cloud deployment**: Reference photos stored in a private GCS bucket, downloaded at container startup
   - Set `known_people_gcs_uri: "gs://your-bucket"` in `config.cloud.yaml`
-  - DMAF downloads them at container startup
   - Upload with: `gsutil -m rsync -r -x ".*Zone\.Identifier$" data/known_people/ gs://your-bucket/`
-- **Local development**: Still uses `data/known_people/` directory as before
+- **Local development**: Uses `data/known_people/` directory
 
 ### `known_people_gcs_uri` Config
-- New config key for cloud deployments
 - Points to a private GCS bucket containing reference photos (one subdirectory per person)
+- DMAF downloads them at container startup before running face recognition
 - Service account needs `objectViewer` on the bucket
-- Replaces the old approach of baking known_people into the Docker image
 
 ### WhatsApp Media Sources
 - **OpenClaw integration**: WhatsApp media interception via OpenClaw (see `deploy/openclaw-integration.md`)
