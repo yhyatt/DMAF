@@ -1,5 +1,6 @@
 # watcher logic
 import hashlib
+import inspect
 import logging
 import time
 from dataclasses import dataclass
@@ -192,7 +193,12 @@ def _process_image_file(
     if is_matched:
         logger.info(f"Match {Path(dedup_key).name} -> {who}")
         try:
-            handler.on_match(image_path, who, dedup_key=dedup_key)
+            # Pass dedup_key if the on_match override supports it.
+            # Older subclasses may only accept (p, who) — fall back gracefully.
+            if "dedup_key" in inspect.signature(handler.on_match).parameters:
+                handler.on_match(image_path, who, dedup_key=dedup_key)
+            else:
+                handler.on_match(image_path, who)
             if handler.cfg.delete_source_after_upload:
                 try:
                     image_path.unlink()
