@@ -215,6 +215,23 @@ def main(argv: list[str] | None = None) -> int:
             album_id = None
 
     class Uploader(NewImageHandler):
+        def on_match_video(self, p: Path, who: list[str], dedup_key: str | None = None) -> None:
+            key = dedup_key or str(p)
+            try:
+                video_bytes = p.read_bytes()
+                up_token = upload_bytes(creds, video_bytes, p.name)
+                _id = create_media_item(
+                    creds, up_token, album_id,
+                    description=f"Auto-import video: {', '.join(who)}",
+                )
+                self.db_conn.mark_uploaded(key)
+                logger.info(f"Uploaded video -> MediaItem {_id}")
+            except Exception as e:
+                logger.error(f"Video upload failed for {p.name}: {e}")
+                if self.alert_manager:
+                    self.alert_manager.record_error("upload", str(e), key)
+                raise
+
         def on_match(self, p: Path, who: list[str], dedup_key: str | None = None) -> None:
             record_key = dedup_key if dedup_key else str(p)
             try:

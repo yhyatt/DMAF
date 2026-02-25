@@ -98,6 +98,7 @@ wa_automate/                  # Repository/project root
 - ✅ **Phase F-prep**: Observability & auto-refresh (alerting, score tracking, known refresh)
 - ✅ **Phase F**: Cloud deployment (GCS + Cloud Run + Firestore backend)
 - 🚧 **Phase G**: Documentation & open-source - IN PROGRESS
+- ✅ **Video Processing**: Scan WhatsApp video clips for known faces (`find_face_in_video`), early exit on first match, upload matched videos to Google Photos
 
 ## Useful Commands
 

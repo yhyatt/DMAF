@@ -120,6 +120,9 @@ class NewImageHandler(FileSystemEventHandler):
     def on_match(self, p: Path, who, dedup_key: str | None = None):
         pass  # overridden by caller
 
+    def on_match_video(self, p: Path, who: list[str], dedup_key: str | None = None):
+        pass  # overridden by caller
+
 
 def run_watch(dirs, handler):
     obs = Observer()
@@ -239,7 +242,14 @@ def scan_and_process_once(dirs, handler) -> ScanResult:
     Returns:
         ScanResult with statistics about the scan operation
     """
-    from dmaf.gcs_watcher import cleanup_temp_file, download_gcs_blob, is_gcs_uri, list_gcs_images
+    from dmaf.gcs_watcher import (
+        cleanup_temp_file,
+        download_gcs_blob,
+        is_gcs_uri,
+        list_gcs_images,
+        list_gcs_videos,
+    )
+    from dmaf.video_processor import find_face_in_video, is_video_file
 
     logger = logging.getLogger(__name__)
 
@@ -285,6 +295,71 @@ def scan_and_process_once(dirs, handler) -> ScanResult:
                 finally:
                     if local_path is not None:
                         cleanup_temp_file(local_path)
+
+            # --- GCS video source ---
+            try:
+                video_paths = list_gcs_videos(dir_path)
+            except Exception as e:
+                logger.error(f"Failed to list GCS videos {dir_path}: {e}")
+                errors += 1
+                video_paths = []
+
+            for gcs_video_path in video_paths:
+                if handler.db_conn.seen(gcs_video_path):
+                    continue
+
+                new_files += 1
+                local_path = None
+                try:
+                    local_path = download_gcs_blob(gcs_video_path)
+                    vid_matched, who, best_score, match_ts = find_face_in_video(
+                        local_path, handler.process_fn
+                    )
+                    processed += 1
+
+                    best_person = who[0] if who else None
+                    h = sha256_of_file(local_path)
+
+                    handler.db_conn.add_file_with_score(
+                        gcs_video_path,
+                        h,
+                        int(vid_matched),
+                        0,
+                        best_score,
+                        best_person if vid_matched else None,
+                    )
+
+                    if vid_matched:
+                        matched += 1
+                        logger.info(
+                            f"Video match {Path(gcs_video_path).name} -> {who} "
+                            f"at {match_ts:.1f}s"
+                        )
+                        try:
+                            handler.on_match_video(
+                                local_path, who, dedup_key=gcs_video_path
+                            )
+                        except Exception as e:
+                            logger.error(
+                                f"Video upload failed for {Path(gcs_video_path).name}: {e}"
+                            )
+                            errors += 1
+                            if handler.alert_manager:
+                                handler.alert_manager.record_error(
+                                    "upload", str(e), gcs_video_path
+                                )
+                    else:
+                        logger.info(f"No match in video {Path(gcs_video_path).name}")
+                except Exception as e:
+                    logger.error(f"Error processing video {gcs_video_path}: {e}")
+                    errors += 1
+                    if handler.alert_manager:
+                        handler.alert_manager.record_error(
+                            "processing", str(e), gcs_video_path
+                        )
+                finally:
+                    if local_path is not None:
+                        cleanup_temp_file(local_path)
         else:
             # --- Local watch source ---
             pd = Path(dir_path)
@@ -322,6 +397,46 @@ def scan_and_process_once(dirs, handler) -> ScanResult:
                         handler.alert_manager.record_error(
                             "processing", str(e), str(image_path)
                         )
+
+            # --- Local video source ---
+            for video_path in pd.iterdir():
+                if not video_path.is_file():
+                    continue
+                if not is_video_file(video_path):
+                    continue
+
+                dedup_key = str(video_path)
+                if handler.db_conn.seen(dedup_key):
+                    continue
+
+                new_files += 1
+                try:
+                    vid_matched, who, best_score, match_ts = find_face_in_video(
+                        video_path, handler.process_fn
+                    )
+                    processed += 1
+
+                    best_person = who[0] if who else None
+                    h = sha256_of_file(video_path)
+
+                    handler.db_conn.add_file_with_score(
+                        dedup_key, h, int(vid_matched), 0, best_score,
+                        best_person if vid_matched else None,
+                    )
+
+                    if vid_matched:
+                        matched += 1
+                        logger.info(f"Video match {video_path.name} -> {who}")
+                        try:
+                            handler.on_match_video(video_path, who, dedup_key=dedup_key)
+                        except Exception as e:
+                            logger.error(f"Video upload failed for {video_path.name}: {e}")
+                            errors += 1
+                    else:
+                        logger.info(f"No match in video {video_path.name}")
+                except Exception as e:
+                    logger.error(f"Error processing video {video_path.name}: {e}")
+                    errors += 1
 
     success = errors == 0 and processed == new_files
 

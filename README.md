@@ -62,6 +62,7 @@
 - **Three powerful backends**: `dlib` (CPU-optimized), `InsightFace` (non-commercial), or `AuraFace` (Apache 2.0, **commercial use OK**)
 - **Extensible architecture**: Plugin-based backend system for adding new recognition engines
 - **Multi-face detection**: Handles group photos with multiple faces
+- **Video clip support**: Scans WhatsApp video clips for known faces — stops on first match and uploads the full clip to Google Photos
 - **Configurable tolerance**: Fine-tune matching sensitivity
 - **Advanced detection thresholds**: Separate thresholds for training vs. production matching
 
@@ -210,12 +211,12 @@ graph LR
     F -->|Deduplication| G[🚫 Never Reprocess]
 ```
 
-1. **Watch** - DMAF monitors your configured WhatsApp media directories for new images
+1. **Watch** - DMAF monitors your configured WhatsApp media directories for new images and video clips
 2. **Load Known Faces** - Reference photos loaded from local directory or downloaded from GCS bucket (cloud deployment)
-3. **Detect** - Each new image is analyzed for faces using your chosen backend
+3. **Detect** - Each new image or video clip is analyzed for faces using your chosen backend. Videos are sampled at 1fps (2fps for clips under 10s) and scanning stops as soon as a known face is found
 4. **Recognize** - Detected faces are compared against your known people database
-5. **Upload** - Images containing recognized faces are uploaded to Google Photos
-6. **Deduplicate** - SHA256 hashing ensures no image is ever processed twice
+5. **Upload** - Matched images and full video clips are uploaded to Google Photos
+6. **Deduplicate** - SHA256 hashing ensures no file is ever processed twice
 
 ---
 
