@@ -4,9 +4,10 @@ import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import cv2
-import numpy as np
 import pytest
+
+cv2 = pytest.importorskip("cv2", reason="cv2 not installed (requires dmaf[insightface])")
+import numpy as np  # noqa: E402 — after importorskip guard
 
 from dmaf.video_processor import (
     VIDEO_EXTENSIONS,
@@ -171,14 +172,16 @@ class TestFindFaceInVideo:
 
 class TestListGcsVideos:
     def test_filters_video_extensions(self):
-        mock_blob = lambda name: MagicMock(name=name, **{"name": name})
+        def make_blob(name):
+            return MagicMock(name=name, **{"name": name})
+
         blobs = [
-            mock_blob("prefix/clip.mp4"),
-            mock_blob("prefix/photo.jpg"),
-            mock_blob("prefix/movie.mov"),
-            mock_blob("prefix/doc.txt"),
-            mock_blob("prefix/short.3gp"),
-            mock_blob("prefix/"),
+            make_blob("prefix/clip.mp4"),
+            make_blob("prefix/photo.jpg"),
+            make_blob("prefix/movie.mov"),
+            make_blob("prefix/doc.txt"),
+            make_blob("prefix/short.3gp"),
+            make_blob("prefix/"),
         ]
 
         with patch("dmaf.gcs_watcher._get_storage_client") as mock_client:
