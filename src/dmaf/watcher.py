@@ -116,7 +116,7 @@ class NewImageHandler(FileSystemEventHandler):
                 except Exception as e:
                     self.logger.warning(f"Failed to delete unmatched {p.name}: {e}")
 
-    def on_match(self, p: Path, who):
+    def on_match(self, p: Path, who, dedup_key: str | None = None):
         pass  # overridden by caller
 
 
@@ -192,7 +192,7 @@ def _process_image_file(
     if is_matched:
         logger.info(f"Match {Path(dedup_key).name} -> {who}")
         try:
-            handler.on_match(image_path, who)
+            handler.on_match(image_path, who, dedup_key=dedup_key)
             if handler.cfg.delete_source_after_upload:
                 try:
                     image_path.unlink()

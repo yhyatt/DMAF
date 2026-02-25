@@ -215,7 +215,8 @@ def main(argv: list[str] | None = None) -> int:
             album_id = None
 
     class Uploader(NewImageHandler):
-        def on_match(self, p: Path, who: list[str]) -> None:
+        def on_match(self, p: Path, who: list[str], dedup_key: str | None = None) -> None:
+            record_key = dedup_key if dedup_key else str(p)
             try:
                 img = Image.open(p).convert("RGB")
                 bio = io.BytesIO()
@@ -224,13 +225,12 @@ def main(argv: list[str] | None = None) -> int:
                 _id = create_media_item(
                     creds, up_token, album_id, description=f"Auto-import: {', '.join(who)}"
                 )
-                self.db_conn.mark_uploaded(str(p))
+                self.db_conn.mark_uploaded(record_key)
                 logger.info(f"Uploaded -> MediaItem {_id}")
             except Exception as e:
                 logger.error(f"Upload failed for {p.name}: {e}")
-                # Record error if alert_manager available
                 if self.alert_manager:
-                    self.alert_manager.record_error("upload", str(e), str(p))
+                    self.alert_manager.record_error("upload", str(e), record_key)
                 raise  # Re-raise so scan_and_process_once can count it as error
 
     handler = Uploader(process_fn, conn, settings, alert_manager=alert_manager)
