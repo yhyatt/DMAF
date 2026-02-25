@@ -116,6 +116,6 @@ def cleanup_temp_file(local_path: Path) -> None:
         logger.warning(f"Failed to clean up temp file {local_path}: {e}")
 
 
-def is_gcs_uri(path: str) -> bool:
-    """Check if a path is a GCS URI."""
-    return path.startswith("gs://")
+def is_gcs_uri(path: str | Path) -> bool:
+    """Check if a path is a GCS URI. Accepts str or Path (Path.as_posix() preserves slashes)."""
+    return str(path).startswith("gs://")

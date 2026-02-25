@@ -228,9 +228,9 @@ class Settings(BaseSettings):
         extra="ignore",  # Ignore unknown fields for forward compatibility
     )
 
-    watch_dirs: list[Path] = Field(
+    watch_dirs: list[Path | str] = Field(
         default_factory=list,
-        description="Directories to watch for new images",
+        description="Directories to watch for new images. Supports local paths and GCS URIs (gs://bucket/prefix).",
     )
     google_photos_album_name: str | None = Field(
         default=None,
@@ -277,9 +277,17 @@ class Settings(BaseSettings):
     @field_validator("watch_dirs", mode="before")
     @classmethod
     def parse_watch_dirs(cls, v):
-        """Convert string paths to Path objects."""
+        """Convert string paths to Path objects, preserving GCS URIs as strings."""
         if isinstance(v, list):
-            return [Path(p) if isinstance(p, str) else p for p in v]
+            result = []
+            for p in v:
+                if isinstance(p, str) and p.startswith("gs://"):
+                    result.append(p)  # Keep GCS URIs as strings — Path() strips the double slash
+                elif isinstance(p, str):
+                    result.append(Path(p))
+                else:
+                    result.append(p)
+            return result
         return v
 
     @field_validator("known_people_dir", mode="before")
