@@ -125,7 +125,8 @@
 - Python 3.10 or higher
 - Google Cloud project with Photos Library API enabled
 - WhatsApp media access via:
-  - **WhatsApp Desktop + rclone** (iOS/Android) - ⭐ Recommended (zero duplicates, cross-platform)
+  - **[OpenClaw](https://openclaw.ai) integration** (iPhone/Android) - ⭐ Recommended (zero-maintenance, auto-collects group media)
+  - **WhatsApp Desktop + rclone** (iOS/Android) - Cross-platform, zero duplicates
   - Android direct sync (FolderSync Pro, Syncthing) - Best for Android-only
   - See [DEPLOYMENT.md](DEPLOYMENT.md#whatsapp-media-sync-setup) for detailed setup guides
 

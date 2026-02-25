@@ -329,7 +329,23 @@ gcloud scheduler jobs describe dmaf-schedule --location=us-central1
 
 You need a method to sync WhatsApp media from your phone to the GCS bucket.
 
-### Option A: WhatsApp Desktop + rclone (iOS + Android) - Recommended ⭐
+### Option A: OpenClaw Integration (iPhone + Android) - Recommended ⭐
+
+**Best for**: iPhone users, users already running OpenClaw, zero-maintenance setup
+
+If you use [OpenClaw](https://openclaw.ai) as a personal AI assistant with WhatsApp connected, it can silently collect group media and sync it to GCS — no WhatsApp Desktop or rclone needed.
+
+**See the full guide**: [OpenClaw Integration](openclaw-integration.md)
+
+**Quick summary**:
+1. Configure OpenClaw to accept group messages with `requireMention: true`
+2. Media auto-downloads to `~/.openclaw/media/inbound/`
+3. A cron script uploads images to GCS every 30 minutes
+4. DMAF Cloud Run job processes them on schedule
+
+**Note**: Only captures photos from other people in groups (your own sent photos are on your phone already).
+
+### Option B: WhatsApp Desktop + rclone (iOS + Android)
 
 **Best for**: Both iOS and Android users, cleanest setup with zero duplicates
 
@@ -717,14 +733,30 @@ gcloud billing accounts get-iam-policy $BILLING_ACCOUNT
 
 ### Job Fails with "Permission Denied"
 
-**Symptom**: Job logs show "403 Forbidden" or "Permission denied"
+**Symptom**: Job logs show "403 Forbidden" or "Permission denied", or Cloud Scheduler shows `PERMISSION_DENIED` status.
 
-**Solution**: Verify service account permissions:
+**Common cause**: The Cloud Scheduler service account lacks `roles/run.invoker` on the Cloud Run job. This is needed for the scheduler to trigger job executions.
+
+**Solution**:
+```bash
+# Grant invoker permission to the service account
+gcloud run jobs add-iam-policy-binding dmaf-scan \
+  --region=us-central1 \
+  --member="serviceAccount:dmaf-runner@dmaf-production.iam.gserviceaccount.com" \
+  --role="roles/run.invoker"
+
+# Verify with a manual execution
+gcloud run jobs execute dmaf-scan --region=us-central1
+```
+
+Also verify the service account has the required project-level roles:
 ```bash
 gcloud projects get-iam-policy $PROJECT_ID \
   --flatten="bindings[].members" \
   --filter="bindings.members:$SA_EMAIL"
 ```
+
+Required roles: `roles/run.invoker`, `roles/datastore.user`, `roles/storage.objectViewer`, `roles/secretmanager.secretAccessor`.
 
 ### Job Timeout
 
