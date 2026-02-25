@@ -69,14 +69,15 @@ class TestGcsScanIntegration:
         from PIL import Image
 
         test_img = Image.fromarray(np.zeros((100, 100, 3), dtype=np.uint8))
-        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
-        test_img.save(tmp.name)
-        tmp.close()
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
+            test_img.save(tmp.name)
+            temp_image_path = Path(tmp.name)
 
         # Mock blob download to copy our test image
         def fake_download(filename):
             import shutil
-            shutil.copy(tmp.name, filename)
+
+            shutil.copy(temp_image_path, filename)
 
         mock_bucket.blob.return_value.download_to_filename = fake_download
 
@@ -103,14 +104,14 @@ class TestGcsScanIntegration:
         assert result.processed == 1
 
         # Clean up our test image
-        Path(tmp.name).unlink(missing_ok=True)
+        temp_image_path.unlink(missing_ok=True)
 
     def test_local_dirs_unchanged(self, tmp_path):
         """Local directory scanning should work exactly as before."""
-        from dmaf.watcher import scan_and_process_once
-
         import numpy as np
         from PIL import Image
+
+        from dmaf.watcher import scan_and_process_once
 
         # Create a test image in local dir
         img_path = tmp_path / "test.jpg"
