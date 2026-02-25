@@ -9,8 +9,9 @@ import logging
 from collections.abc import Generator
 from pathlib import Path
 
-import cv2
-import numpy as np
+# cv2 and numpy are optional heavy dependencies — imported lazily inside
+# functions so that the module can be imported even when they are not installed
+# (e.g. in lightweight test environments that skip face-recognition tests).
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +46,7 @@ def get_video_mime_type(path: str | Path) -> str:
 
 def iter_frames(
     video_path: Path, fps: float = 1.0
-) -> Generator[tuple[float, np.ndarray], None, None]:
+) -> Generator[tuple[float, "np.ndarray"], None, None]:
     """
     Yield frames from a video one at a time (generator).
 
@@ -56,6 +57,15 @@ def iter_frames(
     Using a generator means find_face_in_video can stop extraction the
     moment a match is found — no wasted memory or CPU on remaining frames.
     """
+    try:
+        import cv2
+        import numpy as np  # noqa: F401 — needed for type annotation at runtime
+    except ImportError as e:
+        raise ImportError(
+            "opencv-python-headless is required for video processing. "
+            "Install with: pip install dmaf[insightface]"
+        ) from e
+
     cap = cv2.VideoCapture(str(video_path))
     if not cap.isOpened():
         logger.warning(f"Cannot open video: {video_path}")
@@ -86,7 +96,7 @@ def iter_frames(
         cap.release()
 
 
-def extract_frames(video_path: Path, fps: float = 1.0) -> list[tuple[float, np.ndarray]]:
+def extract_frames(video_path: Path, fps: float = 1.0) -> list[tuple[float, "np.ndarray"]]:
     """
     Extract all sampled frames into a list.
 

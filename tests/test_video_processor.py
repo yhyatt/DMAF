@@ -1,13 +1,19 @@
-"""Tests for video_processor module."""
+"""Tests for video_processor module.
 
-import tempfile
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+Skipped automatically when cv2 (opencv-python-headless) is not installed.
+"""
 
+# ruff: noqa: E402 — imports intentionally follow pytest.importorskip guard
 import pytest
 
-cv2 = pytest.importorskip("cv2", reason="cv2 not installed (requires dmaf[insightface])")
-import numpy as np  # noqa: E402 — after importorskip guard
+pytest.importorskip("cv2", reason="cv2 not installed (requires dmaf[insightface])")
+
+import tempfile  # noqa: E402
+from pathlib import Path  # noqa: E402
+from unittest.mock import MagicMock, patch  # noqa: E402
+
+import cv2  # noqa: E402
+import numpy as np  # noqa: E402
 
 from dmaf.video_processor import (
     VIDEO_EXTENSIONS,
