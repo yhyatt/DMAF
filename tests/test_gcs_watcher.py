@@ -6,8 +6,6 @@ import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from dmaf.gcs_watcher import cleanup_temp_file, is_gcs_uri, parse_gcs_uri
 
 
