@@ -615,7 +615,7 @@ class TestDeleteSourceAfterUpload:
         mock_img = Mock(spec=Image.Image)
         mock_img_rgb = Mock()
         mock_img.convert.return_value = mock_img_rgb
-        mock_image_open.return_value = mock_img
+        mock_image_open.return_value.__enter__.return_value = mock_img
 
         mock_sha256.return_value = "test_hash"
 
@@ -656,7 +656,7 @@ class TestDeleteSourceAfterUpload:
         mock_img = Mock(spec=Image.Image)
         mock_img_rgb = Mock()
         mock_img.convert.return_value = mock_img_rgb
-        mock_image_open.return_value = mock_img
+        mock_image_open.return_value.__enter__.return_value = mock_img
 
         mock_sha256.return_value = "test_hash"
 
@@ -698,7 +698,7 @@ class TestDeleteSourceAfterUpload:
         mock_img = Mock(spec=Image.Image)
         mock_img_rgb = Mock()
         mock_img.convert.return_value = mock_img_rgb
-        mock_image_open.return_value = mock_img
+        mock_image_open.return_value.__enter__.return_value = mock_img
 
         mock_sha256.return_value = "test_hash"
 
