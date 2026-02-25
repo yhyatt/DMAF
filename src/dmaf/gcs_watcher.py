@@ -137,8 +137,8 @@ def download_known_people(gcs_uri: str, local_dir: Path) -> int:
 
     local_dir.mkdir(parents=True, exist_ok=True)
     count = 0
+    failed = 0
     seen_people: set[str] = set()
-    skip_suffixes = {".zone.identifier"}
 
     for blob in bucket.list_blobs(prefix=prefix):
         # Get relative path from prefix
@@ -146,9 +146,13 @@ def download_known_people(gcs_uri: str, local_dir: Path) -> int:
         if not rel_path or rel_path.endswith("/"):
             continue
 
-        # Skip non-image files and Zone.Identifier files
-        suffix = Path(rel_path).suffix.lower()
-        if suffix in skip_suffixes or suffix not in IMAGE_EXTENSIONS:
+        # Skip Zone.Identifier files (Windows alternate data streams) — consistent
+        # with the rest of the codebase which checks `"Zone.Identifier" in name`
+        if "Zone.Identifier" in rel_path:
+            continue
+
+        # Skip non-image files
+        if Path(rel_path).suffix.lower() not in IMAGE_EXTENSIONS:
             continue
 
         # Recreate subdirectory structure
@@ -161,7 +165,13 @@ def download_known_people(gcs_uri: str, local_dir: Path) -> int:
             seen_people.add(person)
             logger.info(f"Downloading reference images for: {person}")
 
-        blob.download_to_filename(str(local_path))
-        count += 1
+        try:
+            blob.download_to_filename(str(local_path))
+            count += 1
+        except Exception as e:
+            failed += 1
+            logger.warning(f"Failed to download reference image {blob.name}: {e}")
 
+    if failed:
+        logger.warning(f"Downloaded {count} reference images ({failed} failed)")
     return count
