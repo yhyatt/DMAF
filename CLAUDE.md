@@ -3,7 +3,7 @@
 ## Project Overview
 WhatsApp media backup automation with face recognition filtering. Monitors WhatsApp directories, identifies photos of known people, and uploads matches to Google Photos.
 
-**Current Status**: Phase F-prep complete (observability & auto-refresh), 80% overall progress
+**Current Status**: Phase F complete (cloud deployment working end-to-end), Phase G (documentation) in progress, ~90% overall progress
 
 ## Communication Preferences
 
@@ -26,6 +26,24 @@ Example: "Staging all changes including deletions with `git add -A` to commit Ph
 - **Optional dependencies**: Users can install `[face-recognition]`, `[insightface]`, or `[all]` - keeps installations minimal
 - **Python 3.10+**: Modern type hints (`list[Path]` not `List[Path]`)
 
+### Known People Reference Photos
+- **Cloud deployment**: Reference photos stored in a GCS bucket, NOT baked into the Docker image
+  - Set `known_people_gcs_uri: "gs://your-bucket"` in `config.cloud.yaml`
+  - DMAF downloads them at container startup
+  - Upload with: `gsutil -m rsync -r -x ".*Zone\.Identifier$" data/known_people/ gs://your-bucket/`
+- **Local development**: Still uses `data/known_people/` directory as before
+
+### `known_people_gcs_uri` Config
+- New config key for cloud deployments
+- Points to a private GCS bucket containing reference photos (one subdirectory per person)
+- Service account needs `objectViewer` on the bucket
+- Replaces the old approach of baking known_people into the Docker image
+
+### WhatsApp Media Sources
+- **OpenClaw integration**: WhatsApp media interception via OpenClaw (see `deploy/openclaw-integration.md`)
+- **WhatsApp Desktop + rclone**: Traditional cross-platform option
+- **Android direct sync**: FolderSync Pro, Syncthing
+
 ### Privacy & Gitignore
 - **Entire `data/` ignored** except `data/known_people/README.md` (instructions only)
 - **Personal photos protected**: known_people/ contains family photos of Lenny, Louise, Zoe, yonatan
@@ -40,8 +58,8 @@ wa_automate/                  # Repository/project root
 │   ├── face_recognition/     # Face backends (factory pattern)
 │   └── utils/                # Shared utilities
 ├── data/                     # User data (gitignored)
-│   ├── known_people/         # Reference faces (4 people, ~40 photos)
-│   └── state.sqlite3         # Deduplication DB (16 KB)
+│   ├── known_people/         # Reference faces - local dev only (cloud: GCS bucket)
+│   └── state.sqlite3         # Deduplication DB (local only; cloud uses Firestore)
 ├── config.yaml               # Runtime config (gitignored)
 └── pyproject.toml            # Package definition
 ```
@@ -81,7 +99,7 @@ wa_automate/                  # Repository/project root
 - ✅ **Phase E**: CI/CD (GitHub Actions, automated testing)
 - ✅ **Phase F-prep**: Observability & auto-refresh (alerting, score tracking, known refresh)
 - ✅ **Phase F**: Cloud deployment (GCS + Cloud Run + Firestore backend)
-- ⏸️ **Phase G**: Documentation & open-source - Next
+- 🚧 **Phase G**: Documentation & open-source - IN PROGRESS
 
 ## Useful Commands
 
@@ -129,8 +147,8 @@ gcloud run jobs describe dmaf-scan --region=us-central1
 # List recent executions
 gcloud run jobs executions list --job=dmaf-scan --region=us-central1 --limit=10
 
-# Sync local known_people to container image (rebuild required)
-gcloud builds submit --config cloudbuild.yaml
+# Sync known_people reference photos to GCS (no rebuild needed)
+gsutil -m rsync -r -x ".*Zone\.Identifier$" data/known_people/ gs://your-bucket/
 ```
 
 **See full deployment guide**: `deploy/README.md`
