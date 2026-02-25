@@ -841,9 +841,6 @@ class TestVideoProcessingIntegration:
         """Image and video files in the same directory are both scanned."""
         from dmaf.watcher import scan_and_process_once
 
-        import numpy as np
-        from PIL import Image as PILImage
-
         db_conn = Mock()
         db_conn.seen.return_value = False
         mock_sha256.return_value = "hash_any"
@@ -869,7 +866,7 @@ class TestVideoProcessingIntegration:
         watch_dir.mkdir()
 
         # Create a real minimal JPEG so PIL.Image.open doesn't fail
-        img = PILImage.fromarray(np.zeros((8, 8, 3), dtype=np.uint8))
+        img = Image.fromarray(np.zeros((8, 8, 3), dtype=np.uint8))
         image_file = watch_dir / "photo.jpg"
         img.save(str(image_file))
 

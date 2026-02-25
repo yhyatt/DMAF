@@ -218,17 +218,19 @@ def main(argv: list[str] | None = None) -> int:
         def on_match_video(self, p: Path, who: list[str], dedup_key: str | None = None) -> None:
             key = dedup_key or str(p)
             max_video_bytes = 200 * 1024 * 1024  # 200 MB — Cloud Run has 2 GB RAM
+            # Size guard lives outside try/except so RuntimeError is not re-caught
+            # and record_error is not called twice.
+            file_size = p.stat().st_size
+            if file_size > max_video_bytes:
+                msg = (
+                    f"Video {p.name} too large to upload safely "
+                    f"({file_size / (1024 * 1024):.1f} MB > 200 MB limit)"
+                )
+                logger.error(msg)
+                if self.alert_manager:
+                    self.alert_manager.record_error("upload", msg, key)
+                raise RuntimeError(msg)
             try:
-                file_size = p.stat().st_size
-                if file_size > max_video_bytes:
-                    msg = (
-                        f"Video {p.name} too large to upload safely "
-                        f"({file_size / (1024 * 1024):.1f} MB > 200 MB limit)"
-                    )
-                    logger.error(msg)
-                    if self.alert_manager:
-                        self.alert_manager.record_error("upload", msg, key)
-                    raise RuntimeError(msg)
                 video_bytes = p.read_bytes()
                 up_token = upload_bytes(creds, video_bytes, p.name)
                 _id = create_media_item(
