@@ -25,7 +25,7 @@ COPY src/ src/
 COPY data/known_people/ data/known_people/
 
 # Install DMAF with InsightFace backend (lighter than face_recognition, no cmake needed)
-RUN pip install --no-cache-dir -e ".[insightface]" google-cloud-firestore
+RUN pip install --no-cache-dir -e ".[insightface,gcs]" google-cloud-firestore
 
 # Pre-download InsightFace model to avoid cold-start download in cloud
 # This adds ~600MB to image but eliminates 3-5 second startup delay
