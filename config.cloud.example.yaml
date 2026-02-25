@@ -2,6 +2,9 @@
 # This config is used by Cloud Run Job
 
 # WhatsApp incoming media from GCS bucket
+# GCS URIs are supported natively — just use gs://bucket/prefix/ and install dmaf[gcs].
+# The dedup key is the full gs:// path, so files won't be reprocessed across runs.
+# You can mix local paths and GCS URIs in the same list.
 watch_dirs:
   - "gs://dmaf-production-whatsapp-media"
 

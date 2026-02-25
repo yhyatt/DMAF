@@ -135,6 +135,87 @@ def run_watch(dirs, handler):
     obs.join()
 
 
+def _process_image_file(
+    image_path: Path,
+    dedup_key: str,
+    handler,
+    logger: logging.Logger,
+) -> tuple[bool, bool]:
+    """
+    Process a single image file through face recognition and upload pipeline.
+
+    Args:
+        image_path: Local path to the image file (for reading pixels)
+        dedup_key: String key for deduplication (may differ from image_path for GCS)
+        handler: NewImageHandler with process_fn, db_conn, cfg, alert_manager
+        logger: Logger instance
+
+    Returns:
+        (was_matched, had_error) tuple
+    """
+    img = Image.open(image_path).convert("RGB")
+    np_img = np.array(img)
+    h = sha256_of_file(image_path)
+
+    result = handler.process_fn(np_img)
+
+    if len(result) == 3:
+        is_matched, who, scores = result
+    else:
+        is_matched, who = result
+        scores = {}
+
+    best_score = max(scores.values()) if scores else None
+    best_person = max(scores, key=scores.get) if scores else None
+
+    if handler.alert_manager and best_score is not None and not is_matched:
+        tolerance = handler.cfg.recognition.tolerance
+        borderline_offset = handler.cfg.alerting.borderline_offset
+        threshold = 1.0 - tolerance
+        borderline_low = threshold - borderline_offset
+
+        if borderline_low <= best_score < threshold:
+            handler.alert_manager.record_borderline(
+                dedup_key, best_score, tolerance, best_person
+            )
+
+    handler.db_conn.add_file_with_score(
+        dedup_key,
+        h,
+        int(is_matched),
+        0,
+        best_score,
+        best_person if is_matched else None,
+    )
+
+    had_error = False
+    if is_matched:
+        logger.info(f"Match {Path(dedup_key).name} -> {who}")
+        try:
+            handler.on_match(image_path, who)
+            if handler.cfg.delete_source_after_upload:
+                try:
+                    image_path.unlink()
+                    logger.info(f"Deleted source: {image_path.name}")
+                except Exception as e:
+                    logger.warning(f"Failed to delete {image_path.name}: {e}")
+        except Exception as e:
+            logger.error(f"Upload failed for {Path(dedup_key).name}: {e}")
+            had_error = True
+            if handler.alert_manager:
+                handler.alert_manager.record_error("upload", str(e), dedup_key)
+    else:
+        logger.info(f"No match {Path(dedup_key).name}")
+        if handler.cfg.delete_unmatched_after_processing:
+            try:
+                image_path.unlink()
+                logger.info(f"Deleted unmatched: {image_path.name}")
+            except Exception as e:
+                logger.warning(f"Failed to delete unmatched {image_path.name}: {e}")
+
+    return is_matched, had_error
+
+
 def scan_and_process_once(dirs, handler) -> ScanResult:
     """
     Scan all directories once, process new images, then exit.
@@ -142,13 +223,18 @@ def scan_and_process_once(dirs, handler) -> ScanResult:
     Used for batch/scheduled execution instead of continuous watching.
     Processes all image files in the directories that haven't been seen before.
 
+    Supports both local directories and GCS URIs (gs://bucket/prefix/).
+    For GCS URIs, the dedup key is the full gs:// path (not the temp file path).
+
     Args:
-        dirs: List of directory paths to scan
+        dirs: List of directory paths or GCS URIs to scan
         handler: NewImageHandler instance with process_fn and db_conn
 
     Returns:
         ScanResult with statistics about the scan operation
     """
+    from dmaf.gcs_watcher import cleanup_temp_file, download_gcs_blob, is_gcs_uri, list_gcs_images
+
     logger = logging.getLogger(__name__)
 
     new_files = 0
@@ -159,105 +245,77 @@ def scan_and_process_once(dirs, handler) -> ScanResult:
     image_extensions = {".jpg", ".jpeg", ".png", ".heic", ".webp"}
 
     for dir_path in dirs:
-        pd = Path(dir_path)
-        if not pd.exists():
-            logger.warning(f"Directory does not exist: {pd}")
-            continue
-
-        logger.info(f"Scanning directory: {pd}")
-
-        # Find all image files in directory
-        for image_path in pd.iterdir():
-            if not image_path.is_file():
-                continue
-            if image_path.suffix.lower() not in image_extensions:
-                continue
-
-            # Check if already processed
-            if handler.db_conn.seen(str(image_path)):
-                continue
-
-            new_files += 1
-
+        if is_gcs_uri(dir_path):
+            # --- GCS watch source ---
+            logger.info(f"Scanning GCS: {dir_path}")
             try:
-                # Process the image (same logic as _handle_file)
-                img = Image.open(image_path).convert("RGB")
-                np_img = np.array(img)
-                h = sha256_of_file(image_path)
-
-                # Call process_fn - it now returns scores if configured
-                result = handler.process_fn(np_img)
-
-                # Handle both old (matched, who) and new (matched, who, scores) formats
-                if len(result) == 3:
-                    is_matched, who, scores = result
-                else:
-                    is_matched, who = result
-                    scores = {}
-
-                # Extract best score and person
-                best_score = max(scores.values()) if scores else None
-                best_person = max(scores, key=scores.get) if scores else None
-
-                # Check for borderline events (close to but below threshold)
-                if handler.alert_manager and best_score is not None and not is_matched:
-                    tolerance = handler.cfg.recognition.tolerance
-                    borderline_offset = handler.cfg.alerting.borderline_offset
-                    threshold = 1.0 - tolerance
-                    borderline_low = threshold - borderline_offset
-
-                    if borderline_low <= best_score < threshold:
-                        handler.alert_manager.record_borderline(
-                            str(image_path), best_score, tolerance, best_person
-                        )
-
-                # Store with scores
-                handler.db_conn.add_file_with_score(
-                    str(image_path),
-                    h,
-                    int(is_matched),
-                    0,
-                    best_score,
-                    best_person if is_matched else None,
-                )
-                processed += 1
-
-                if is_matched:
-                    matched += 1
-                    logger.info(f"Match {image_path.name} -> {who}")
-
-                    # Call on_match hook for uploading
-                    try:
-                        handler.on_match(image_path, who)
-                        # Delete source if configured (after successful upload)
-                        if handler.cfg.delete_source_after_upload:
-                            try:
-                                image_path.unlink()
-                                logger.info(f"Deleted source: {image_path.name}")
-                            except Exception as e:
-                                logger.warning(f"Failed to delete {image_path.name}: {e}")
-                    except Exception as e:
-                        logger.error(f"Upload failed for {image_path.name}: {e}")
-                        errors += 1
-                        # Record error if alert_manager available
-                        if handler.alert_manager:
-                            handler.alert_manager.record_error("upload", str(e), str(image_path))
-                else:
-                    logger.info(f"No match {image_path.name}")
-                    # Delete unmatched if configured (staging cleanup)
-                    if handler.cfg.delete_unmatched_after_processing:
-                        try:
-                            image_path.unlink()
-                            logger.info(f"Deleted unmatched: {image_path.name}")
-                        except Exception as e:
-                            logger.warning(f"Failed to delete unmatched {image_path.name}: {e}")
-
+                gcs_paths = list_gcs_images(dir_path)
             except Exception as e:
-                logger.error(f"Error processing {image_path.name}: {e}")
+                logger.error(f"Failed to list GCS bucket {dir_path}: {e}")
                 errors += 1
-                # Record error if alert_manager available
-                if handler.alert_manager:
-                    handler.alert_manager.record_error("processing", str(e), str(image_path))
+                continue
+
+            for gcs_path in gcs_paths:
+                if handler.db_conn.seen(gcs_path):
+                    continue
+
+                new_files += 1
+                local_path = None
+                try:
+                    local_path = download_gcs_blob(gcs_path)
+                    is_matched, had_error = _process_image_file(
+                        local_path, gcs_path, handler, logger
+                    )
+                    processed += 1
+                    if is_matched:
+                        matched += 1
+                    if had_error:
+                        errors += 1
+                except Exception as e:
+                    logger.error(f"Error processing {gcs_path}: {e}")
+                    errors += 1
+                    if handler.alert_manager:
+                        handler.alert_manager.record_error("processing", str(e), gcs_path)
+                finally:
+                    if local_path is not None:
+                        cleanup_temp_file(local_path)
+        else:
+            # --- Local watch source ---
+            pd = Path(dir_path)
+            if not pd.exists():
+                logger.warning(f"Directory does not exist: {pd}")
+                continue
+
+            logger.info(f"Scanning directory: {pd}")
+
+            for image_path in pd.iterdir():
+                if not image_path.is_file():
+                    continue
+                if image_path.suffix.lower() not in image_extensions:
+                    continue
+
+                dedup_key = str(image_path)
+                if handler.db_conn.seen(dedup_key):
+                    continue
+
+                new_files += 1
+
+                try:
+                    is_matched, had_error = _process_image_file(
+                        image_path, dedup_key, handler, logger
+                    )
+                    processed += 1
+                    if is_matched:
+                        matched += 1
+                    if had_error:
+                        errors += 1
+                except Exception as e:
+                    logger.error(f"Error processing {image_path.name}: {e}")
+                    errors += 1
+                    if handler.alert_manager:
+                        handler.alert_manager.record_error(
+                            "processing", str(e), str(image_path)
+                        )
 
     success = errors == 0 and processed == new_files
 
