@@ -379,7 +379,7 @@ class TestUploaderOnMatchVideo:
         stat_result = Mock()
         stat_result.st_size = oversized
 
-        with patch.object(Path, "stat", return_value=stat_result), pytest.raises(RuntimeError, match="too large"):
+        with patch.object(Path, "stat", return_value=stat_result), pytest.raises(RuntimeError, match="too large"):  # noqa: E501
             handler.on_match_video(video_file, ["Louise"])
 
         mock_upload.assert_not_called()
