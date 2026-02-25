@@ -296,6 +296,127 @@ class TestUploader:
         assert "Bob" in call_kwargs["description"]
 
 
+class TestUploaderOnMatchVideo:
+    """Test Uploader.on_match_video method."""
+
+    def _capture_handler(self, mock_run_watch, mock_load, mock_get_database,
+                         mock_get_creds, mock_upload, mock_create,
+                         sample_config_yaml):
+        """Run main() and return the captured Uploader handler and mock db."""
+        mock_load.return_value = ({}, [])
+        mock_db = Mock()
+        mock_get_database.return_value = mock_db
+        mock_get_creds.return_value = Mock()
+        mock_upload.return_value = "video_token"
+        mock_create.return_value = "video_media_item"
+
+        captured = {}
+
+        def capture(dirs, handler):
+            captured["handler"] = handler
+            captured["db"] = mock_db
+
+        mock_run_watch.side_effect = capture
+        __main__.main(["--config", str(sample_config_yaml)])
+        return captured["handler"], captured["db"]
+
+    @patch("dmaf.__main__.run_watch")
+    @patch("dmaf.__main__.get_creds")
+    @patch("dmaf.__main__.get_database")
+    @patch("dmaf.__main__.load_known_faces")
+    @patch("dmaf.__main__.upload_bytes")
+    @patch("dmaf.__main__.create_media_item")
+    def test_on_match_video_success(
+        self, mock_create, mock_upload, mock_load,
+        mock_get_database, mock_get_creds, mock_run_watch,
+        sample_config_yaml: Path, temp_dir: Path,
+    ):
+        """Successful video upload: bytes sent, media item created, db marked."""
+        handler, mock_db = self._capture_handler(
+            mock_run_watch, mock_load, mock_get_database,
+            mock_get_creds, mock_upload, mock_create, sample_config_yaml,
+        )
+
+        video_file = temp_dir / "clip.mp4"
+        video_content = b"fake_video_bytes"
+        video_file.write_bytes(video_content)
+
+        handler.on_match_video(video_file, ["Zoe", "Lenny"], dedup_key="gs://bucket/clip.mp4")
+
+        mock_upload.assert_called_once()
+        upload_bytes_arg = mock_upload.call_args[0][1]
+        assert upload_bytes_arg == video_content
+
+        mock_create.assert_called_once()
+        create_kwargs = mock_create.call_args[1]
+        assert "Zoe" in create_kwargs["description"]
+        assert "Lenny" in create_kwargs["description"]
+
+        mock_db.mark_uploaded.assert_called_once_with("gs://bucket/clip.mp4")
+
+    @patch("dmaf.__main__.run_watch")
+    @patch("dmaf.__main__.get_creds")
+    @patch("dmaf.__main__.get_database")
+    @patch("dmaf.__main__.load_known_faces")
+    @patch("dmaf.__main__.upload_bytes")
+    @patch("dmaf.__main__.create_media_item")
+    def test_on_match_video_oversized_raises(
+        self, mock_create, mock_upload, mock_load,
+        mock_get_database, mock_get_creds, mock_run_watch,
+        sample_config_yaml: Path, temp_dir: Path,
+    ):
+        """Video exceeding 200 MB raises RuntimeError and records an alert."""
+        handler, mock_db = self._capture_handler(
+            mock_run_watch, mock_load, mock_get_database,
+            mock_get_creds, mock_upload, mock_create, sample_config_yaml,
+        )
+        handler.alert_manager = Mock()
+
+        video_file = temp_dir / "huge.mp4"
+        video_file.write_bytes(b"x")  # tiny file, but we mock the size
+
+        oversized = 201 * 1024 * 1024  # 201 MB > 200 MB limit
+        stat_result = Mock()
+        stat_result.st_size = oversized
+
+        with patch.object(Path, "stat", return_value=stat_result):
+            with pytest.raises(RuntimeError, match="too large"):
+                handler.on_match_video(video_file, ["Louise"])
+
+        mock_upload.assert_not_called()
+        mock_db.mark_uploaded.assert_not_called()
+        handler.alert_manager.record_error.assert_called_once()
+
+    @patch("dmaf.__main__.run_watch")
+    @patch("dmaf.__main__.get_creds")
+    @patch("dmaf.__main__.get_database")
+    @patch("dmaf.__main__.load_known_faces")
+    @patch("dmaf.__main__.upload_bytes")
+    @patch("dmaf.__main__.create_media_item")
+    def test_on_match_video_upload_error_propagates(
+        self, mock_create, mock_upload, mock_load,
+        mock_get_database, mock_get_creds, mock_run_watch,
+        sample_config_yaml: Path, temp_dir: Path,
+    ):
+        """Upload failure is re-raised after recording an alert."""
+        handler, mock_db = self._capture_handler(
+            mock_run_watch, mock_load, mock_get_database,
+            mock_get_creds, mock_upload, mock_create, sample_config_yaml,
+        )
+        handler.alert_manager = Mock()
+
+        mock_upload.side_effect = ConnectionError("Photos API unavailable")
+
+        video_file = temp_dir / "fail.mp4"
+        video_file.write_bytes(b"video_data")
+
+        with pytest.raises(ConnectionError):
+            handler.on_match_video(video_file, ["Yonatan"])
+
+        mock_db.mark_uploaded.assert_not_called()
+        handler.alert_manager.record_error.assert_called_once()
+
+
 class TestMainCLI:
     """Test CLI argument parsing."""
 
