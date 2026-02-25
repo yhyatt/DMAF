@@ -40,9 +40,16 @@ def parse_gcs_uri(uri: str) -> tuple[str, str]:
 
     Returns:
         (bucket_name, prefix) where prefix may be empty string
+
+    Raises:
+        ValueError: If the URI is not a valid GCS URI with scheme 'gs' and a non-empty bucket.
     """
     parsed = urlparse(uri)
+    if parsed.scheme != "gs":
+        raise ValueError(f"Invalid GCS URI '{uri}': scheme must be 'gs'")
     bucket = parsed.netloc
+    if not bucket:
+        raise ValueError(f"Invalid GCS URI '{uri}': bucket name is missing")
     prefix = parsed.path.lstrip("/")
     return bucket, prefix
 
