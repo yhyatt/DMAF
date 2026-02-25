@@ -98,14 +98,14 @@ class TestExtractFrames:
             path.unlink()
 
     def test_corrupt_video_returns_empty(self):
-        tmp = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
-        tmp.write(b"not a video")
-        tmp.close()
+        with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp:
+            tmp.write(b"not a video")
+            path = Path(tmp.name)
         try:
-            frames = extract_frames(Path(tmp.name))
+            frames = extract_frames(path)
             assert frames == []
         finally:
-            Path(tmp.name).unlink()
+            path.unlink()
 
 
 class TestFindFaceInVideo:
@@ -161,17 +161,17 @@ class TestFindFaceInVideo:
             path.unlink()
 
     def test_corrupt_video(self):
-        tmp = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
-        tmp.write(b"garbage data")
-        tmp.close()
+        with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp:
+            tmp.write(b"garbage data")
+            path = Path(tmp.name)
         try:
             matched, who, score, ts = find_face_in_video(
-                Path(tmp.name), lambda x: (False, [], {})
+                path, lambda x: (False, [], {})
             )
             assert matched is False
             assert who == []
         finally:
-            Path(tmp.name).unlink()
+            path.unlink()
 
 
 class TestListGcsVideos:
