@@ -4,18 +4,17 @@ Email content templates for alerts.
 
 from __future__ import annotations
 
-try:
-    from zoneinfo import ZoneInfo
 
-    _TZ_ISRAEL = ZoneInfo("Asia/Jerusalem")
-except ImportError:  # Python < 3.9 fallback (shouldn't happen on Cloud Run)
-    _TZ_ISRAEL = None  # type: ignore[assignment]
+def _format_ts(ts: object, tz_name: str = "UTC") -> str:
+    """Format a Firestore datetime in the configured timezone.
 
+    Args:
+        ts: A datetime object (or plain string / None from tests).
+        tz_name: IANA timezone name, e.g. ``'UTC'``, ``'Asia/Jerusalem'``,
+            ``'America/New_York'``.  Comes from ``alerting.timezone`` in
+            the DMAF config — never hardcoded.
 
-def _format_ts(ts: object) -> str:
-    """Format a Firestore datetime as a human-readable Israel-time string.
-
-    Example output: '2026-02-25 22:07 UTC+2 (Israel)'
+    Example output: ``'2026-02-25 22:07 UTC+2 (Asia/Jerusalem)'``
     Falls back gracefully if ts is None or an unexpected type.
     """
     if ts is None:
@@ -23,16 +22,18 @@ def _format_ts(ts: object) -> str:
     try:
         if not hasattr(ts, "astimezone"):
             return str(ts)[:57]
-        if _TZ_ISRAEL is not None:
-            local = ts.astimezone(_TZ_ISRAEL)
-            offset_h = int(local.utcoffset().total_seconds() // 3600)
-            return local.strftime(f"%Y-%m-%d %H:%M UTC{offset_h:+d} (Israel)")
-        return ts.strftime("%Y-%m-%d %H:%M UTC")
+        from zoneinfo import ZoneInfo
+
+        tz = ZoneInfo(tz_name)
+        local = ts.astimezone(tz)
+        offset_h = int(local.utcoffset().total_seconds() // 3600)
+        label = f"UTC{offset_h:+d} ({tz_name})"
+        return local.strftime(f"%Y-%m-%d %H:%M {label}")
     except Exception:
         return str(ts)[:57]
 
 
-def format_borderline_alert(events: list[dict]) -> tuple[str, str | None]:
+def format_borderline_alert(events: list[dict], tz_name: str = "UTC") -> tuple[str, str | None]:
     """
     Format borderline recognition events into email content.
 
@@ -75,7 +76,7 @@ def format_borderline_alert(events: list[dict]) -> tuple[str, str | None]:
                 + " " * (39 - len(f"{event['match_score']:.2f}") - len(f"{threshold:.2f}"))
                 + "│",
                 f"│ Closest match: {event['matched_person'] or 'Unknown':<47} │",
-                f"│ Time: {_format_ts(event['created_ts']):<57} │",
+                f"│ Time: {_format_ts(event['created_ts'], tz_name):<57} │",
                 "└─────────────────────────────────────────────────────────────────┘",
                 "",
             ]
@@ -100,7 +101,7 @@ def format_borderline_alert(events: list[dict]) -> tuple[str, str | None]:
     return plain_text, html
 
 
-def format_error_alert(events: list[dict]) -> tuple[str, str | None]:
+def format_error_alert(events: list[dict], tz_name: str = "UTC") -> tuple[str, str | None]:
     """
     Format error events into email content.
 
@@ -134,7 +135,7 @@ def format_error_alert(events: list[dict]) -> tuple[str, str | None]:
             text_lines.append(f"│ File: {event['file_path'][:60]:<60} │")
         text_lines.extend(
             [
-                f"│ Time: {_format_ts(event['created_ts']):<57} │",
+                f"│ Time: {_format_ts(event['created_ts'], tz_name):<57} │",
                 "└─────────────────────────────────────────────────────────────────┘",
                 "",
             ]
@@ -155,7 +156,7 @@ def format_error_alert(events: list[dict]) -> tuple[str, str | None]:
 
 
 def format_combined_alert(
-    borderline_events: list[dict], error_events: list[dict]
+    borderline_events: list[dict], error_events: list[dict], tz_name: str = "UTC"
 ) -> tuple[str, str | None]:
     """
     Format combined borderline and error events into a single email.
@@ -172,7 +173,7 @@ def format_combined_alert(
     if error_events:
         text_lines.append(f"== ERRORS ({len(error_events)}) ==")
         text_lines.append("")
-        error_text, _ = format_error_alert(error_events)
+        error_text, _ = format_error_alert(error_events, tz_name)
         text_lines.append(error_text)
         text_lines.append("")
         text_lines.append("")
@@ -180,7 +181,7 @@ def format_combined_alert(
     if borderline_events:
         text_lines.append(f"== BORDERLINE RECOGNITIONS ({len(borderline_events)}) ==")
         text_lines.append("")
-        borderline_text, _ = format_borderline_alert(borderline_events)
+        borderline_text, _ = format_borderline_alert(borderline_events, tz_name)
         text_lines.append(borderline_text)
 
     plain_text = "\n".join(text_lines)

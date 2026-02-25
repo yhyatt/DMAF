@@ -125,17 +125,21 @@ class AlertManager:
                 f"[DMAF] Alert Summary: {len(error_events)} errors, "
                 f"{len(borderline_events)} borderline images"
             )
-            body_text, body_html = format_combined_alert(borderline_events, error_events)
+            body_text, body_html = format_combined_alert(
+                borderline_events, error_events, self.config.timezone
+            )
         elif error_events:
             alert_type = "error"
             subject = f"[DMAF] Processing Errors ({len(error_events)} errors since last alert)"
-            body_text, body_html = format_error_alert(error_events)
+            body_text, body_html = format_error_alert(error_events, self.config.timezone)
         else:  # borderline_events only
             alert_type = "borderline"
             subject = (
                 f"[DMAF] Borderline Recognitions - Review Needed ({len(borderline_events)} images)"
             )
-            body_text, body_html = format_borderline_alert(borderline_events)
+            body_text, body_html = format_borderline_alert(
+                borderline_events, self.config.timezone
+            )
 
         # Send email
         success = self.email_sender.send_email(
