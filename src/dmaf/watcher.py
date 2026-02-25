@@ -153,8 +153,8 @@ def _process_image_file(
     Returns:
         (was_matched, had_error) tuple
     """
-    img = Image.open(image_path).convert("RGB")
-    np_img = np.array(img)
+    with Image.open(image_path) as img:
+        np_img = np.array(img.convert("RGB"))
     h = sha256_of_file(image_path)
 
     result = handler.process_fn(np_img)
