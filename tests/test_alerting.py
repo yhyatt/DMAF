@@ -1,6 +1,6 @@
 """Tests for alerting functionality."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import patch
 
@@ -355,12 +355,10 @@ class TestAlertManager:
 
     def test_should_send_alert_too_soon(self, mock_db, alert_config):
         """Test should_send_alert returns False when called too soon."""
-        from datetime import datetime
-
         manager = AlertManager(alert_config, mock_db)
 
         # Simulate an alert sent just now
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         conn = mock_db._get_conn()
         conn.execute(
             "INSERT INTO alert_batches(alert_type, recipient, event_count, sent_ts) "
@@ -382,7 +380,7 @@ class TestAlertManager:
         manager = AlertManager(alert_config, mock_db)
 
         # Simulate old alert
-        old_time = datetime.now() - timedelta(minutes=61)
+        old_time = datetime.now(timezone.utc) - timedelta(minutes=61)
         conn = mock_db._get_conn()
         conn.execute(
             "INSERT INTO alert_batches(alert_type, recipient, event_count, sent_ts) "

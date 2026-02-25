@@ -242,7 +242,10 @@ class Settings(BaseSettings):
     )
     known_people_gcs_uri: str | None = Field(
         default=None,
-        description="GCS URI to download known_people reference images from (e.g. gs://bucket/prefix). Downloaded to known_people_dir at startup.",
+        description=(
+            "GCS URI for known_people reference images (e.g. gs://bucket/prefix). "
+            "Downloaded to known_people_dir at container startup."
+        ),
     )
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = Field(
         default="INFO",
