@@ -90,8 +90,8 @@ def download_gcs_blob(gcs_path: str) -> Path:
 
     suffix = Path(blob_name).suffix
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix, prefix="dmaf_gcs_")
-    blob.download_to_filename(tmp.name)
     tmp.close()
+    blob.download_to_filename(tmp.name)
 
     logger.debug(f"Downloaded {gcs_path} -> {tmp.name}")
     return Path(tmp.name)
