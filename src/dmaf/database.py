@@ -744,7 +744,7 @@ class FirestoreDatabase:
             for doc in docs:
                 data = doc.to_dict()
                 sent_ts = data.get("sent_ts")
-                if sent_ts:
+                if isinstance(sent_ts, datetime):
                     return sent_ts
             return None
         except Exception:
@@ -812,7 +812,7 @@ class FirestoreDatabase:
             for doc in docs:
                 data = doc.to_dict()
                 created_ts = data.get("created_ts")
-                if created_ts:
+                if isinstance(created_ts, datetime):
                     return created_ts
             return None
         except Exception:
