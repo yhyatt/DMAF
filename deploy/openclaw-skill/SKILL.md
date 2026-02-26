@@ -5,7 +5,7 @@ description: Set up and operate DMAF (Don't Miss A Face) — automated WhatsApp 
 
 # DMAF Skill
 
-DMAF watches WhatsApp groups, recognizes faces you care about in photos and videos, and backs them up to Google Photos automatically. This skill covers setup (one-time) and day-to-day operations.
+DMAF watches WhatsApp groups, recognizes faces you care about in photos and videos, and backs them up to Google Photos automatically. **Setup requires an agent. After that: zero LLM tokens — the pipeline runs on a system cron + Cloud Run with no AI calls.** This skill covers setup (one-time) and day-to-day operations.
 
 ## Architecture
 

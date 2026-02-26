@@ -11,7 +11,8 @@
 
 <p align="center">
   Never miss a moment with your loved ones — DMAF watches your WhatsApp groups,<br/>
-  recognizes the faces you care about in photos <em>and videos</em>, and backs them up to Google Photos automatically.
+  recognizes the faces you care about in photos <em>and videos</em>, and backs them up to Google Photos automatically.<br/>
+  <strong>Set it up once. After that: zero LLM tokens, zero ongoing cost, fully autonomous.</strong>
 </p>
 
 <p align="center">
@@ -60,6 +61,8 @@ DMAF is designed to be set up and operated entirely by an AI agent. If you use [
 
 Your agent will walk through the full setup: GCP project, service account, GCS buckets, reference photos, config, the media sync cron, and the Cloud Scheduler — reading [`deploy/setup-secrets.md`](deploy/setup-secrets.md) as its guide.
 
+> 💡 **After setup: zero LLM tokens.** The ongoing pipeline is a system cron + Cloud Run job — pure infrastructure, no AI calls, no ongoing API cost.
+
 **Also friendly for:**
 - 🤖 **Coding agents** (Claude Code, Copilot, Cursor) — [`AGENTS.md`](AGENTS.md) gives full architecture context, test patterns, and common pitfalls
 - 🦾 **Agentic workflows** — DMAF's Cloud Run job, Firestore dedup, and GCS pipeline are all API-first; any agent can trigger scans, check results, and manage known people via `gcloud` / `gsutil`
@@ -85,7 +88,8 @@ Your agent will walk through the full setup: GCP project, service account, GCS b
 ### 🦞 OpenClaw Friendly
 - **One-prompt setup**: Install the DMAF skill, describe your setup, done
 - **WhatsApp media capture**: OpenClaw intercepts group photos & videos automatically — no desktop app, no Android required
-- **Zero-maintenance sync**: System cron uploads media to GCS every 30 min, zero LLM tokens
+- **Token-free after setup**: The sync cron and Cloud Run pipeline run with zero LLM calls — no ongoing AI cost whatsoever
+- **Zero-maintenance sync**: System cron uploads media to GCS every 30 min, no agent involvement
 - **Agent-operable**: Trigger scans, view logs, add people — all via shell/gcloud commands any agent can run
 - 🤖 **Developer friendly**: `AGENTS.md` with architecture, mocks, pitfalls, CI rules
 - 🦾 **Agentic friendly**: API-first pipeline, gcloud-scriptable end to end
@@ -115,11 +119,12 @@ Your agent will walk through the full setup: GCP project, service account, GCS b
 <tr>
 <td width="50%">
 
-### ⚡ Efficient Processing
+### ⚡ Efficient & Token-Free
+- **Zero LLM tokens after setup**: The entire pipeline — sync cron, face recognition, upload — runs without any AI calls
 - **SHA256 deduplication**: Never process the same file twice — survives container restarts via Firestore
 - **Video early exit**: Sampling stops the moment a known face is found — no wasted compute
 - **Intelligent retry logic**: Exponential backoff for network resilience
-- **Scale-to-zero**: Cloud Run Job — no cost when idle
+- **Scale-to-zero**: Cloud Run Job — no cost when idle, GCP free tier eligible
 
 </td>
 <td width="50%">
@@ -151,6 +156,8 @@ is already connected to OpenClaw. Walk me through everything.
 ```
 
 Your agent reads [`deploy/setup-secrets.md`](deploy/setup-secrets.md) and [`deploy/openclaw-integration.md`](deploy/openclaw-integration.md) to guide you step by step.
+
+> ✅ **Zero ongoing tokens.** Once setup is done, DMAF runs entirely on a system cron + Cloud Run — no LLM involved, no API calls, no recurring AI cost.
 
 ---
 
@@ -222,8 +229,8 @@ graph LR
     G -->|SHA256| H[🚫 Never Reprocess]
 ```
 
-1. **Capture** — OpenClaw intercepts WhatsApp group media and saves it locally; a system cron uploads it to GCS every 30 min
-2. **Schedule** — Cloud Scheduler triggers the Cloud Run job hourly
+1. **Capture** — OpenClaw intercepts WhatsApp group media and saves it locally; a system cron (zero LLM tokens) uploads it to GCS every 30 min
+2. **Schedule** — Cloud Scheduler triggers the Cloud Run job hourly — no agent, no AI cost
 3. **Load** — Reference photos downloaded from GCS bucket at job startup
 4. **Detect** — Each file is scanned: images once, videos sampled at 1–2fps with early exit on first match
 5. **Upload** — Matched photos and full video clips are uploaded to Google Photos
