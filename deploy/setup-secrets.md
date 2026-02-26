@@ -187,9 +187,17 @@ recognition:
 
 # ── Google Photos ───────────────────────────────────────────────────────────
 google_photos_token_secret: "dmaf-photos-token"  # Secret Manager secret name
-google_photos_album_name: "DMAF Auto-Import"     # Leave empty to skip album
+google_photos_album_name: "Family Faces"         # Recommended: keeps DMAF uploads separate
+                                                 # from native camera-roll backup in Google Photos.
+                                                 # Without this, the same photo may appear twice:
+                                                 # once from iOS backup (original) and once from
+                                                 # DMAF (WA-compressed). Set null to upload to root.
 
 # ── Deduplication ──────────────────────────────────────────────────────────
+# DMAF uses two-layer dedup to avoid processing the same content twice:
+#   1. Path-based: Firestore doc per GCS path (fast, O(1) lookup)
+#   2. Content-based: SHA-256 of file bytes — catches the same photo forwarded
+#      across multiple WhatsApp groups (same compression = same hash)
 dedup:
   backend: firestore            # firestore (cloud) | sqlite (local dev)
   firestore_project: dmaf-production

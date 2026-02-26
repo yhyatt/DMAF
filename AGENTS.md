@@ -31,9 +31,9 @@ GCS staging bucket        ← gs://your-bucket/
       ▼
 Cloud Run Job: dmaf-scan  ← Docker image from Cloud Build
       │  scans each file, face recognition against known_people/
-      │  dedup via Firestore (never re-processes a file)
+      │  two-layer dedup via Firestore (path + content SHA-256)
       ▼
-Google Photos             ← matched faces only, organised into album
+Google Photos             ← matched faces only, organised into named album
 ```
 
 **Key constraint**: OpenClaw's self-chat protection means your OWN sent photos never reach
@@ -176,6 +176,14 @@ When a GCS file is downloaded to `/tmp/dmaf_gcs_xxxx.jpg`, the dedup key must be
 original `gs://bucket/file.jpg`, not the local path. Firestore docs are keyed by
 `sha256(gcs_uri)[:32]`. Using the temp path creates a separate doc → mark_uploaded 404.
 
+**1b. Two-layer dedup: path first, then content**
+`seen(path)` is checked before downloading (cheap). After downloading, `seen_by_sha256(hash)`
+catches the same photo arriving via two different GCS paths (e.g. forwarded across groups).
+Both `Database` (SQLite) and `FirestoreDatabase` implement `seen_by_sha256`. The content
+check happens in `_process_image_file` and `_process_video_file` before face recognition runs.
+Note: WA strips all EXIF on iOS — content SHA-256 works because WA compresses once and the
+same compressed bytes are served to all recipients.
+
 **2. `mark_uploaded()` uses `set(merge=True)`, not `update()`**
 `update()` raises 404 if the doc doesn't exist. `set(merge=True)` is idempotent.
 This was a real bug — don't revert it.
@@ -264,6 +272,8 @@ Tests live in `tests/test_mcp_server.py` — all tools mocked via `patch("subpro
 |----------|-----------|
 | GCS as first-class watch source | Pipeline is cloud-native; local dir support for dev only |
 | Firestore for dedup (cloud) | Survives container restarts; no SQLite in Cloud Run |
+| Two-layer dedup (path + SHA-256) | Path dedup is O(1) and catches restarts; content SHA-256 catches the same photo forwarded across multiple WA groups (same WA compression = same bytes) |
+| `google_photos_album_name` recommended | Native iOS backup + DMAF would both upload the same photo (WA strips EXIF so bytes differ); named album keeps DMAF uploads visually separated |
 | Cloud Run Job, not Service | Batch workload — runs, exits, scales to zero |
 | `set(merge=True)` for `mark_uploaded` | `update()` raises 404 on missing doc; `set+merge` is idempotent |
 | `iter_frames` generator + early exit | Large videos; stop decoding after first match |

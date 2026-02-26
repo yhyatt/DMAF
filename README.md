@@ -110,7 +110,7 @@ Your agent will walk through the full setup: GCP project, service account, GCS b
 
 ### ☁️ Google Photos Integration
 - **Automatic uploads**: Photos and full video clips backed up seamlessly
-- **Album organization**: Optionally organize into a named album
+- **Album organization**: Upload to a named album (recommended — keeps face-matched photos separate from your native camera-roll backup)
 - **OAuth2 authentication**: Secure, offline token-based access
 - **Cloud staging support**: Delete source files after upload (ideal for GCS pipelines)
 
@@ -121,7 +121,7 @@ Your agent will walk through the full setup: GCP project, service account, GCS b
 
 ### ⚡ Efficient & Token-Free
 - **Zero LLM tokens after setup**: The entire pipeline — sync cron, face recognition, upload — runs without any AI calls
-- **SHA256 deduplication**: Never process the same file twice — survives container restarts via Firestore
+- **Two-layer deduplication**: Path-based dedup (fast Firestore lookup) + content SHA-256 dedup — the same photo arriving via multiple WhatsApp groups is only processed and uploaded once; survives container restarts
 - **Video early exit**: Sampling stops the moment a known face is found — no wasted compute
 - **Intelligent retry logic**: Exponential backoff for network resilience
 - **Scale-to-zero**: Cloud Run Job — no cost when idle, GCP free tier eligible
@@ -226,7 +226,7 @@ graph LR
     D -->|No match| F[⏭️ Skip]
     E --> G[🗄️ Firestore Dedup]
     F --> G
-    G -->|SHA256| H[🚫 Never Reprocess]
+    G -->|path + content SHA256| H[🚫 Never Reprocess]
 ```
 
 1. **Capture** — OpenClaw intercepts WhatsApp group media and saves it locally; a system cron (zero LLM tokens) uploads it to GCS every 30 min
@@ -234,7 +234,7 @@ graph LR
 3. **Load** — Reference photos downloaded from GCS bucket at job startup
 4. **Detect** — Each file is scanned: images once, videos sampled at 1–2fps with early exit on first match
 5. **Upload** — Matched photos and full video clips are uploaded to Google Photos
-6. **Deduplicate** — SHA256 hash stored in Firestore; the same file is never processed twice
+6. **Deduplicate** — Two-layer check: (1) path-based Firestore lookup catches already-seen GCS paths; (2) content SHA-256 check catches the same photo arriving via multiple groups or sync paths — face recognition is skipped entirely for known content
 
 ---
 
@@ -252,7 +252,7 @@ recognition:
   tolerance: 0.5           # 0.0 (strictest) → 1.0 (loosest)
   min_face_size_pixels: 20
 
-google_photos_album_name: "Family — Auto WhatsApp"
+google_photos_album_name: "Family Faces"  # recommended: keeps DMAF uploads separate from camera-roll backup
 
 alerting:
   enabled: true
