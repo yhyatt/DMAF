@@ -1,6 +1,7 @@
 """Tests for file system watcher and image handler."""
 
 import hashlib
+import logging
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -171,6 +172,7 @@ class TestNewImageHandlerHandleFile:
         """Test that corrupted images are skipped."""
         db_conn = Mock()
         db_conn.seen.return_value = False
+        db_conn.seen_by_sha256.return_value = False
 
         mock_image_open.side_effect = Exception("Corrupted image")
 
@@ -195,6 +197,7 @@ class TestNewImageHandlerHandleFile:
         # Setup mocks
         db_conn = Mock()
         db_conn.seen.return_value = False
+        db_conn.seen_by_sha256.return_value = False
 
         mock_img = Mock(spec=Image.Image)
         mock_img_rgb = Mock()
@@ -251,6 +254,7 @@ class TestNewImageHandlerHandleFile:
         # Setup mocks
         db_conn = Mock()
         db_conn.seen.return_value = False
+        db_conn.seen_by_sha256.return_value = False
 
         mock_img = Mock(spec=Image.Image)
         mock_img_rgb = Mock()
@@ -419,6 +423,7 @@ class TestWatcherIntegration:
         # Setup
         db_conn = Mock()
         db_conn.seen.return_value = False
+        db_conn.seen_by_sha256.return_value = False
 
         mock_img = Mock(spec=Image.Image)
         mock_img_rgb = Mock()
@@ -463,6 +468,7 @@ class TestDeleteSourceAfterUpload:
         # Setup mocks
         db_conn = Mock()
         db_conn.seen.return_value = False
+        db_conn.seen_by_sha256.return_value = False
 
         mock_img = Mock(spec=Image.Image)
         mock_img_rgb = Mock()
@@ -498,6 +504,7 @@ class TestDeleteSourceAfterUpload:
         # Setup mocks
         db_conn = Mock()
         db_conn.seen.return_value = False
+        db_conn.seen_by_sha256.return_value = False
 
         mock_img = Mock(spec=Image.Image)
         mock_img_rgb = Mock()
@@ -533,6 +540,7 @@ class TestDeleteSourceAfterUpload:
         # Setup mocks
         db_conn = Mock()
         db_conn.seen.return_value = False
+        db_conn.seen_by_sha256.return_value = False
 
         mock_img = Mock(spec=Image.Image)
         mock_img_rgb = Mock()
@@ -571,6 +579,7 @@ class TestDeleteSourceAfterUpload:
         # Setup mocks
         db_conn = Mock()
         db_conn.seen.return_value = False
+        db_conn.seen_by_sha256.return_value = False
 
         mock_img = Mock(spec=Image.Image)
         mock_img_rgb = Mock()
@@ -611,6 +620,7 @@ class TestDeleteSourceAfterUpload:
         # Setup mocks
         db_conn = Mock()
         db_conn.seen.return_value = False
+        db_conn.seen_by_sha256.return_value = False
 
         mock_img = Mock(spec=Image.Image)
         mock_img_rgb = Mock()
@@ -652,6 +662,7 @@ class TestDeleteSourceAfterUpload:
         # Setup mocks
         db_conn = Mock()
         db_conn.seen.return_value = False
+        db_conn.seen_by_sha256.return_value = False
 
         mock_img = Mock(spec=Image.Image)
         mock_img_rgb = Mock()
@@ -694,6 +705,7 @@ class TestDeleteSourceAfterUpload:
         # Setup mocks
         db_conn = Mock()
         db_conn.seen.return_value = False
+        db_conn.seen_by_sha256.return_value = False
 
         mock_img = Mock(spec=Image.Image)
         mock_img_rgb = Mock()
@@ -741,6 +753,7 @@ class TestVideoProcessingIntegration:
 
         db_conn = Mock()
         db_conn.seen.return_value = False
+        db_conn.seen_by_sha256.return_value = False
         mock_sha256.return_value = "video_hash_abc"
         mock_find_face.return_value = (True, ["Zoe"], 0.92, 3.5)
 
@@ -780,6 +793,7 @@ class TestVideoProcessingIntegration:
 
         db_conn = Mock()
         db_conn.seen.return_value = False
+        db_conn.seen_by_sha256.return_value = False
         mock_sha256.return_value = "video_hash_xyz"
         mock_find_face.return_value = (False, [], None, None)
 
@@ -811,6 +825,7 @@ class TestVideoProcessingIntegration:
 
         db_conn = Mock()
         db_conn.seen.return_value = False
+        db_conn.seen_by_sha256.return_value = False
         mock_sha256.return_value = "video_hash_err"
         mock_find_face.side_effect = RuntimeError("cv2 exploded")
 
@@ -843,6 +858,7 @@ class TestVideoProcessingIntegration:
 
         db_conn = Mock()
         db_conn.seen.return_value = False
+        db_conn.seen_by_sha256.return_value = False
         mock_sha256.return_value = "hash_any"
 
         # Video: match; Image: no match
@@ -879,3 +895,110 @@ class TestVideoProcessingIntegration:
         handler.on_match.assert_not_called()   # image did not match
         assert result.matched == 1
         assert result.processed == 2
+
+
+class TestContentDedup:
+    """Tests for content-based (SHA-256) deduplication."""
+
+    @patch("dmaf.watcher.Image.open")
+    @patch("dmaf.watcher.sha256_of_file")
+    def test_duplicate_content_skipped_for_image(
+        self, mock_sha256, mock_image_open, temp_dir: Path
+    ):
+        """Same image bytes at a different path should be skipped without face recognition."""
+        from dmaf.watcher import scan_and_process_once
+
+        db_conn = Mock()
+        db_conn.seen.return_value = False
+        # Content hash already exists in DB (e.g. same photo from camera roll)
+        db_conn.seen_by_sha256.return_value = True
+
+        mock_img = Mock(spec=Image.Image)
+        mock_img.convert.return_value = Mock()
+        mock_image_open.return_value.__enter__.return_value = mock_img
+        mock_sha256.return_value = "abc123"
+
+        process_fn = Mock()
+        cfg = Mock()
+        cfg.delete_source_after_upload = False
+
+        handler = NewImageHandler(process_fn, db_conn, cfg)
+        handler.on_match = Mock()
+
+        watch_dir = temp_dir / "watch"
+        watch_dir.mkdir()
+        (watch_dir / "dup.jpg").write_bytes(b"same_bytes")
+
+        result = scan_and_process_once([str(watch_dir)], handler)
+
+        # Face recognition should NOT have run
+        process_fn.assert_not_called()
+        handler.on_match.assert_not_called()
+        # Path should be recorded as seen to avoid re-checking
+        db_conn.add_file_with_score.assert_called_once_with(
+            str(watch_dir / "dup.jpg"), "abc123", 0, 0, None, None
+        )
+        assert result.matched == 0
+
+    @patch("dmaf.watcher.sha256_of_file")
+    def test_duplicate_video_content_skipped(self, mock_sha256, temp_dir: Path):
+        """Same video bytes at a different path should be skipped before frame extraction."""
+        from dmaf.watcher import _process_video_file
+
+        db_conn = Mock()
+        db_conn.seen_by_sha256.return_value = True
+        mock_sha256.return_value = "vid_hash_999"
+
+        process_fn = Mock()
+        cfg = Mock()
+        handler = NewImageHandler(process_fn, db_conn, cfg)
+        handler.on_match_video = Mock()
+        handler.alert_manager = None
+
+        video_path = temp_dir / "dup.mp4"
+        video_path.write_bytes(b"same_video_bytes")
+
+        matched, had_error = _process_video_file(
+            video_path, "gs://bucket/other/dup.mp4", handler, logging.getLogger()
+        )
+
+        assert matched is False
+        assert had_error is False
+        process_fn.assert_not_called()
+        handler.on_match_video.assert_not_called()
+
+    @patch("dmaf.watcher.Image.open")
+    @patch("dmaf.watcher.sha256_of_file")
+    def test_unique_content_not_skipped(
+        self, mock_sha256, mock_image_open, temp_dir: Path
+    ):
+        """File with a new content hash should proceed through face recognition normally."""
+        from dmaf.watcher import scan_and_process_once
+
+        db_conn = Mock()
+        db_conn.seen.return_value = False
+        db_conn.seen_by_sha256.return_value = False  # content is new
+
+        mock_img = Mock(spec=Image.Image)
+        mock_img.convert.return_value = Mock()
+        mock_image_open.return_value.__enter__.return_value = mock_img
+        mock_sha256.return_value = "unique_hash"
+
+        process_fn = Mock()
+        process_fn.return_value = (False, [], {})
+        cfg = Mock()
+        cfg.delete_source_after_upload = False
+        cfg.delete_unmatched_after_processing = False
+
+        handler = NewImageHandler(process_fn, db_conn, cfg)
+        handler.on_match = Mock()
+        handler.alert_manager = None
+
+        watch_dir = temp_dir / "watch"
+        watch_dir.mkdir()
+        (watch_dir / "new.jpg").write_bytes(b"unique_bytes")
+
+        scan_and_process_once([str(watch_dir)], handler)
+
+        # Face recognition SHOULD have run
+        process_fn.assert_called_once()

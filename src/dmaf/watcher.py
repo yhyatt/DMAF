@@ -161,6 +161,17 @@ def _process_image_file(
         np_img = np.array(img.convert("RGB"))
     h = sha256_of_file(image_path)
 
+    # Content-based dedup: same bytes arriving via a different GCS path
+    # (e.g. camera roll + WhatsApp group both sync the same photo).
+    if handler.db_conn.seen_by_sha256(h):
+        logger.info(
+            f"Duplicate content skipped: {Path(dedup_key).name} "
+            f"(sha256={h[:12]}…) — identical file already processed via another path"
+        )
+        # Record this path as seen so subsequent scans skip it immediately.
+        handler.db_conn.add_file_with_score(dedup_key, h, 0, 0, None, None)
+        return False, False
+
     result = handler.process_fn(np_img)
 
     if len(result) == 3:
@@ -248,12 +259,22 @@ def _process_video_file(
     """
     from dmaf.video_processor import find_face_in_video
 
+    h = sha256_of_file(video_path)
+
+    # Content-based dedup: same video bytes arriving via a different GCS path.
+    if handler.db_conn.seen_by_sha256(h):
+        logger.info(
+            f"Duplicate content skipped: {Path(dedup_key).name} "
+            f"(sha256={h[:12]}…) — identical file already processed via another path"
+        )
+        handler.db_conn.add_file_with_score(dedup_key, h, 0, 0, None, None)
+        return False, False
+
     vid_matched, who, best_score, match_ts = find_face_in_video(
         video_path, handler.process_fn
     )
 
     best_person = who[0] if who else None
-    h = sha256_of_file(video_path)
 
     handler.db_conn.add_file_with_score(
         dedup_key,
