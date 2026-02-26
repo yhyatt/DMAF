@@ -52,6 +52,17 @@ Common tasks:
 | Force sync now | `bash ~/.openclaw/workspace/scripts/dmaf-sync.sh` |
 | Check sync log | `tail -30 /tmp/dmaf-sync.log` |
 
+## MCP Server (bonus)
+
+DMAF also ships an MCP server for Claude Desktop, Claude Code, and Cursor.
+It wraps the same gcloud/gsutil commands as above — useful for users who
+don't have OpenClaw. See [`deploy/mcp-setup.md`](../mcp-setup.md).
+
+```bash
+pip install -e ".[mcp]"
+DMAF_PROJECT=your-project dmaf-mcp
+```
+
 ## Installation
 
 ```bash

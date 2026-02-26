@@ -12,7 +12,7 @@
 <p align="center">
   Never miss a moment with your loved ones — DMAF watches your WhatsApp groups,<br/>
   recognizes the faces you care about in photos <em>and videos</em>, and backs them up to Google Photos automatically.<br/>
-  <strong>Set it up once. After that: zero LLM tokens, zero ongoing cost, fully autonomous.</strong>
+  <strong>Set it up once. After that: zero LLM tokens, minimal cloud costs, fully autonomous.</strong>
 </p>
 
 <p align="center">
@@ -65,7 +65,7 @@ Your agent will walk through the full setup: GCP project, service account, GCS b
 
 **Also friendly for:**
 - 🤖 **Coding agents** (Claude Code, Copilot, Cursor) — [`AGENTS.md`](AGENTS.md) gives full architecture context, test patterns, and common pitfalls
-- 🦾 **Agentic workflows** — DMAF's Cloud Run job, Firestore dedup, and GCS pipeline are all API-first; any agent can trigger scans, check results, and manage known people via `gcloud` / `gsutil`
+- 🦾 **MCP clients** (Claude Desktop, Claude Code, Cursor, Windsurf) — install the [MCP server](deploy/mcp-setup.md) and your AI can `trigger_scan()`, `get_status()`, `add_person()` and more — no gcloud knowledge needed
 
 ---
 
@@ -88,7 +88,7 @@ Your agent will walk through the full setup: GCP project, service account, GCS b
 ### 🦞 OpenClaw Friendly
 - **One-prompt setup**: Install the DMAF skill, describe your setup, done
 - **WhatsApp media capture**: OpenClaw intercepts group photos & videos automatically — no desktop app, no Android required
-- **Token-free after setup**: The sync cron and Cloud Run pipeline run with zero LLM calls — no ongoing AI cost whatsoever
+- **Token-free after setup**: The sync cron and Cloud Run pipeline run with zero LLM calls — only minimal GCP infrastructure costs (Cloud Run + GCS, free-tier eligible)
 - **Zero-maintenance sync**: System cron uploads media to GCS every 30 min, no agent involvement
 - **Agent-operable**: Trigger scans, view logs, add people — all via shell/gcloud commands any agent can run
 - 🤖 **Developer friendly**: `AGENTS.md` with architecture, mocks, pitfalls, CI rules
@@ -157,7 +157,7 @@ is already connected to OpenClaw. Walk me through everything.
 
 Your agent reads [`deploy/setup-secrets.md`](deploy/setup-secrets.md) and [`deploy/openclaw-integration.md`](deploy/openclaw-integration.md) to guide you step by step.
 
-> ✅ **Zero ongoing tokens.** Once setup is done, DMAF runs entirely on a system cron + Cloud Run — no LLM involved, no API calls, no recurring AI cost.
+> ✅ **Zero ongoing tokens.** Once setup is done, DMAF runs entirely on a system cron + Cloud Run — no LLM involved, no AI API costs — only the minimal GCP infrastructure you already pay for.
 
 ---
 
@@ -307,6 +307,7 @@ DMAF/
 │   ├── setup-secrets.md      # 🔑 All credentials setup, start here
 │   ├── openclaw-integration.md  # 🦞 OpenClaw media sync guide
 │   ├── openclaw-skill/       # 🦞 Installable OpenClaw skill (ClaWHub)
+│   ├── mcp-setup.md          # 🔌 MCP server setup (Claude Desktop / Code / Cursor)
 │   └── README.md             # GCP deployment walkthrough
 ├── tests/                    # pytest — mirrors src/dmaf structure
 ├── AGENTS.md                 # 🤖 Coding agent guide (Claude, Copilot, Cursor)

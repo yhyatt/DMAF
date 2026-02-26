@@ -68,8 +68,11 @@ auraface = [
 gcs = [
     "google-cloud-storage>=2.0",
 ]
+mcp = [
+    "mcp>=1.0.0",
+]
 all = [
-    "dmaf[face-recognition,insightface,auraface,gcs]",
+    "dmaf[face-recognition,insightface,auraface,gcs,mcp]",
 ]
 dev = [
     "pytest>=7.4.0",
@@ -85,6 +88,7 @@ dev = [
 
 [project.scripts]
 dmaf = "dmaf.__main__:main"
+dmaf-mcp = "dmaf.mcp_server:main"
 
 [project.urls]
 Homepage = "https://github.com/yhyatt/DMAF"

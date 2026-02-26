@@ -240,6 +240,22 @@ setup guide.
 **TL;DR**: OpenClaw auto-downloads WhatsApp group media → a system cron script uploads it
 to GCS every 30 min → Cloud Run scans hourly. No LLM tokens involved in the sync.
 
+## MCP Server
+
+`src/dmaf/mcp_server.py` exposes DMAF as MCP tools for Claude Desktop, Claude Code,
+Cursor, and any other MCP client. It is a **control plane only** — the pipeline stays
+token-free. Tools: `trigger_scan`, `get_status`, `get_logs`, `sync_now`, `list_people`,
+`add_person`, `remove_person`, `get_config`, `update_config`.
+
+Setup: **[`deploy/mcp-setup.md`](deploy/mcp-setup.md)**
+
+```bash
+pip install -e ".[mcp]"
+DMAF_PROJECT=your-project dmaf-mcp   # stdio transport
+```
+
+Tests live in `tests/test_mcp_server.py` — all tools mocked via `patch("subprocess.run")`.
+
 ---
 
 ## Key Design Decisions
