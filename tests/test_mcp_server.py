@@ -10,7 +10,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from dmaf.mcp_server import (
+pytest.importorskip("mcp", reason="mcp not installed; pip install 'dmaf[mcp]'")
+
+from dmaf.mcp_server import (  # noqa: E402
     _require_project,
     add_person,
     get_config,

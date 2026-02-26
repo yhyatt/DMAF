@@ -28,7 +28,13 @@ import os
 import subprocess
 import tempfile
 
-from mcp.server.fastmcp import FastMCP
+try:
+    from mcp.server.fastmcp import FastMCP
+except ImportError as _mcp_err:
+    raise ImportError(
+        "The 'mcp' package is required to run the DMAF MCP server. "
+        "Install it with: pip install 'dmaf[mcp]'"
+    ) from _mcp_err
 
 mcp = FastMCP("dmaf", instructions=(
     "DMAF (Don't Miss A Face) control plane. "
