@@ -66,9 +66,9 @@ DMAF_PROJECT=your-project dmaf-mcp
 ## Installation
 
 ```bash
-# Option A: Copy skill directly
-cp -r deploy/openclaw-skill/ ~/.openclaw/skills/dmaf/
+# Option A: Install from ClaWHub (recommended)
+clawhub install dmaf
 
-# Option B: Install from ClaWHub (once published)
-openclaw skill install dmaf
+# Option B: Copy skill directly from the repo
+cp -r deploy/openclaw-skill/ ~/.openclaw/skills/dmaf/
 ```

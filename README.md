@@ -55,7 +55,7 @@
 
 DMAF is designed to be set up and operated entirely by an AI agent. If you use [OpenClaw](https://openclaw.ai), you can go from zero to a working pipeline with a single prompt.
 
-**Install the DMAF skill** from [ClaWHub](https://clawhub.com/skills/dmaf) (or copy [`deploy/openclaw-skill/`](deploy/openclaw-skill/) to your skills directory), then just say:
+**Install the DMAF skill** from [ClaWHub](https://clawhub.ai/skills/dmaf) (or copy [`deploy/openclaw-skill/`](deploy/openclaw-skill/) to your skills directory), then just say:
 
 > *"Set up DMAF for me. My GCP project ID is `[your-project]` and my WhatsApp is already connected to OpenClaw."*
 
@@ -146,7 +146,7 @@ Your agent will walk through the full setup: GCP project, service account, GCS b
 
 ### 🦞 Have OpenClaw? One prompt away
 
-1. Install the DMAF skill from [ClaWHub](https://clawhub.com/skills/dmaf), or copy [`deploy/openclaw-skill/`](deploy/openclaw-skill/) to `~/.openclaw/skills/dmaf/`
+1. Install the DMAF skill: `clawhub install dmaf` — or browse it at [clawhub.ai/skills/dmaf](https://clawhub.ai/skills/dmaf)
 2. Make sure your WhatsApp channel is linked in OpenClaw
 3. Say to your agent:
 
