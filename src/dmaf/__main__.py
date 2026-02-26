@@ -215,7 +215,38 @@ def main(argv: list[str] | None = None) -> int:
             album_id = None
 
     class Uploader(NewImageHandler):
-        def on_match(self, p: Path, who: list[str]) -> None:
+        def on_match_video(self, p: Path, who: list[str], dedup_key: str | None = None) -> None:
+            key = dedup_key or str(p)
+            max_video_bytes = 200 * 1024 * 1024  # 200 MB — Cloud Run has 2 GB RAM
+            # Size guard lives outside try/except so RuntimeError is not re-caught
+            # and record_error is not called twice.
+            file_size = p.stat().st_size
+            if file_size > max_video_bytes:
+                msg = (
+                    f"Video {p.name} too large to upload safely "
+                    f"({file_size / (1024 * 1024):.1f} MB > 200 MB limit)"
+                )
+                logger.error(msg)
+                if self.alert_manager:
+                    self.alert_manager.record_error("upload", msg, key)
+                raise RuntimeError(msg)
+            try:
+                video_bytes = p.read_bytes()
+                up_token = upload_bytes(creds, video_bytes, p.name)
+                _id = create_media_item(
+                    creds, up_token, album_id,
+                    description=f"Auto-import video: {', '.join(who)}",
+                )
+                self.db_conn.mark_uploaded(key)
+                logger.info(f"Uploaded video -> MediaItem {_id}")
+            except Exception as e:
+                logger.error(f"Video upload failed for {p.name}: {e}")
+                if self.alert_manager:
+                    self.alert_manager.record_error("upload", str(e), key)
+                raise
+
+        def on_match(self, p: Path, who: list[str], dedup_key: str | None = None) -> None:
+            record_key = dedup_key if dedup_key else str(p)
             try:
                 img = Image.open(p).convert("RGB")
                 bio = io.BytesIO()
@@ -224,13 +255,12 @@ def main(argv: list[str] | None = None) -> int:
                 _id = create_media_item(
                     creds, up_token, album_id, description=f"Auto-import: {', '.join(who)}"
                 )
-                self.db_conn.mark_uploaded(str(p))
+                self.db_conn.mark_uploaded(record_key)
                 logger.info(f"Uploaded -> MediaItem {_id}")
             except Exception as e:
                 logger.error(f"Upload failed for {p.name}: {e}")
-                # Record error if alert_manager available
                 if self.alert_manager:
-                    self.alert_manager.record_error("upload", str(e), str(p))
+                    self.alert_manager.record_error("upload", str(e), record_key)
                 raise  # Re-raise so scan_and_process_once can count it as error
 
     handler = Uploader(process_fn, conn, settings, alert_manager=alert_manager)

@@ -1,5 +1,6 @@
 # watcher logic
 import hashlib
+import inspect
 import logging
 import time
 from dataclasses import dataclass
@@ -116,7 +117,10 @@ class NewImageHandler(FileSystemEventHandler):
                 except Exception as e:
                     self.logger.warning(f"Failed to delete unmatched {p.name}: {e}")
 
-    def on_match(self, p: Path, who):
+    def on_match(self, p: Path, who, dedup_key: str | None = None):
+        pass  # overridden by caller
+
+    def on_match_video(self, p: Path, who: list[str], dedup_key: str | None = None):
         pass  # overridden by caller
 
 
@@ -192,7 +196,12 @@ def _process_image_file(
     if is_matched:
         logger.info(f"Match {Path(dedup_key).name} -> {who}")
         try:
-            handler.on_match(image_path, who)
+            # Pass dedup_key if the on_match override supports it.
+            # Older subclasses may only accept (p, who) — fall back gracefully.
+            if "dedup_key" in inspect.signature(handler.on_match).parameters:
+                handler.on_match(image_path, who, dedup_key=dedup_key)
+            else:
+                handler.on_match(image_path, who)
             if handler.cfg.delete_source_after_upload:
                 try:
                     image_path.unlink()
@@ -216,6 +225,65 @@ def _process_image_file(
     return is_matched, had_error
 
 
+def _process_video_file(
+    video_path: Path,
+    dedup_key: str,
+    handler,
+    logger: logging.Logger,
+) -> tuple[bool, bool]:
+    """
+    Process a single video file through face recognition and upload pipeline.
+
+    Mirrors _process_image_file but uses find_face_in_video (which streams
+    frames and exits on first match) instead of per-image recognition.
+
+    Args:
+        video_path: Local path to the video file.
+        dedup_key: Deduplication key (GCS URI or local path string).
+        handler: NewImageHandler with process_fn, db_conn, cfg, alert_manager.
+        logger: Logger instance.
+
+    Returns:
+        (was_matched, had_error) tuple.
+    """
+    from dmaf.video_processor import find_face_in_video
+
+    vid_matched, who, best_score, match_ts = find_face_in_video(
+        video_path, handler.process_fn
+    )
+
+    best_person = who[0] if who else None
+    h = sha256_of_file(video_path)
+
+    handler.db_conn.add_file_with_score(
+        dedup_key,
+        h,
+        int(vid_matched),
+        0,
+        best_score,
+        best_person if vid_matched else None,
+    )
+
+    had_error = False
+    if vid_matched:
+        ts_str = f" at {match_ts:.1f}s" if match_ts is not None else ""
+        logger.info(f"Video match {Path(dedup_key).name} -> {who}{ts_str}")
+        try:
+            if "dedup_key" in inspect.signature(handler.on_match_video).parameters:
+                handler.on_match_video(video_path, who, dedup_key=dedup_key)
+            else:
+                handler.on_match_video(video_path, who)
+        except Exception as e:
+            had_error = True
+            logger.error(f"Video upload failed for {Path(dedup_key).name}: {e}")
+            if handler.alert_manager:
+                handler.alert_manager.record_error("upload", str(e), dedup_key)
+    else:
+        logger.info(f"No match in video {Path(dedup_key).name}")
+
+    return vid_matched, had_error
+
+
 def scan_and_process_once(dirs, handler) -> ScanResult:
     """
     Scan all directories once, process new images, then exit.
@@ -233,7 +301,14 @@ def scan_and_process_once(dirs, handler) -> ScanResult:
     Returns:
         ScanResult with statistics about the scan operation
     """
-    from dmaf.gcs_watcher import cleanup_temp_file, download_gcs_blob, is_gcs_uri, list_gcs_images
+    from dmaf.gcs_watcher import (
+        cleanup_temp_file,
+        download_gcs_blob,
+        is_gcs_uri,
+        list_gcs_images,
+        list_gcs_videos,
+    )
+    from dmaf.video_processor import is_video_file
 
     logger = logging.getLogger(__name__)
 
@@ -279,6 +354,41 @@ def scan_and_process_once(dirs, handler) -> ScanResult:
                 finally:
                     if local_path is not None:
                         cleanup_temp_file(local_path)
+
+            # --- GCS video source ---
+            try:
+                video_paths = list_gcs_videos(dir_path)
+            except Exception as e:
+                logger.error(f"Failed to list GCS videos {dir_path}: {e}")
+                errors += 1
+                video_paths = []
+
+            for gcs_video_path in video_paths:
+                if handler.db_conn.seen(gcs_video_path):
+                    continue
+
+                new_files += 1
+                local_path = None
+                try:
+                    local_path = download_gcs_blob(gcs_video_path)
+                    is_matched, had_error = _process_video_file(
+                        local_path, gcs_video_path, handler, logger
+                    )
+                    processed += 1
+                    if is_matched:
+                        matched += 1
+                    if had_error:
+                        errors += 1
+                except Exception as e:
+                    logger.error(f"Error processing video {gcs_video_path}: {e}")
+                    errors += 1
+                    if handler.alert_manager:
+                        handler.alert_manager.record_error(
+                            "processing", str(e), gcs_video_path
+                        )
+                finally:
+                    if local_path is not None:
+                        cleanup_temp_file(local_path)
         else:
             # --- Local watch source ---
             pd = Path(dir_path)
@@ -315,6 +425,35 @@ def scan_and_process_once(dirs, handler) -> ScanResult:
                     if handler.alert_manager:
                         handler.alert_manager.record_error(
                             "processing", str(e), str(image_path)
+                        )
+
+            # --- Local video source ---
+            for video_path in pd.iterdir():
+                if not video_path.is_file():
+                    continue
+                if not is_video_file(video_path):
+                    continue
+
+                dedup_key = str(video_path)
+                if handler.db_conn.seen(dedup_key):
+                    continue
+
+                new_files += 1
+                try:
+                    is_matched, had_error = _process_video_file(
+                        video_path, dedup_key, handler, logger
+                    )
+                    processed += 1
+                    if is_matched:
+                        matched += 1
+                    if had_error:
+                        errors += 1
+                except Exception as e:
+                    logger.error(f"Error processing video {video_path.name}: {e}")
+                    errors += 1
+                    if handler.alert_manager:
+                        handler.alert_manager.record_error(
+                            "processing", str(e), dedup_key
                         )
 
     success = errors == 0 and processed == new_files

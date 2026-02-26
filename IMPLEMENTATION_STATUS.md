@@ -1116,3 +1116,31 @@ Deploy dmaf to Google Cloud Platform:
 - **Docstrings:** Every public function documented
 
 quick guide - images, deployment, etc
+
+---
+
+## ✅ Phase H: Video Processing - **COMPLETE**
+
+### What Was Accomplished
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Frame extraction (cv2) | ✅ | 1fps; 2fps for clips <10s |
+| Early-exit on first match | ✅ | Stops scanning remaining frames immediately |
+| Full video upload to Google Photos | ✅ | Matched clips uploaded via existing Photos API |
+| GCS video listing | ✅ | `list_gcs_videos()` alongside `list_gcs_images()` |
+| Firestore dedup for videos | ✅ | Same SHA256 dedup key as images |
+| Backward-compat `on_match_video` | ✅ | `inspect.signature` guard on base class |
+
+### Files Added/Modified
+
+```
+NEW:  src/dmaf/video_processor.py     - Frame extraction + find_face_in_video
+NEW:  tests/test_video_processor.py   - Full test coverage (early exit, corrupt file, old format)
+MOD:  src/dmaf/gcs_watcher.py         - list_gcs_videos()
+MOD:  src/dmaf/watcher.py             - GCS video loop in scan_and_process_once
+MOD:  src/dmaf/__main__.py            - Uploader.on_match_video()
+```
+
+### Supported video formats
+`.mp4`, `.mov`, `.avi`, `.3gp`, `.mkv`, `.webm`

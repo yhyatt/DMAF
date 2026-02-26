@@ -198,6 +198,14 @@ class AlertSettings(BaseModel):
         ge=7,
         description="Delete alerted events older than this many days",
     )
+    timezone: str = Field(
+        default="UTC",
+        description=(
+            "IANA timezone name for timestamps in alert emails "
+            "(e.g. 'UTC', 'Asia/Jerusalem', 'America/New_York'). "
+            "Defaults to UTC."
+        ),
+    )
     smtp: SmtpSettings | None = Field(
         default=None,
         description="SMTP settings (required when enabled=True)",

@@ -726,3 +726,156 @@ class TestDeleteSourceAfterUpload:
         assert test_file.exists()
         assert result.errors == 1
         assert result.uploaded == 0
+
+
+class TestVideoProcessingIntegration:
+    """Integration tests for video processing in scan_and_process_once."""
+
+    @patch("dmaf.watcher.sha256_of_file")
+    @patch("dmaf.video_processor.find_face_in_video")
+    def test_local_video_match_calls_on_match_video(
+        self, mock_find_face, mock_sha256, temp_dir: Path
+    ):
+        """Video file with a match triggers on_match_video and increments matched."""
+        from dmaf.watcher import scan_and_process_once
+
+        db_conn = Mock()
+        db_conn.seen.return_value = False
+        mock_sha256.return_value = "video_hash_abc"
+        mock_find_face.return_value = (True, ["Zoe"], 0.92, 3.5)
+
+        process_fn = Mock()
+        cfg = Mock()
+        cfg.delete_source_after_upload = False
+        handler = NewImageHandler(process_fn, db_conn, cfg)
+
+        on_match_video_calls = []
+
+        def fake_on_match_video(p, who, dedup_key=None):
+            on_match_video_calls.append((p, who, dedup_key))
+
+        handler.on_match_video = fake_on_match_video
+
+        watch_dir = temp_dir / "watch_video"
+        watch_dir.mkdir()
+        video_file = watch_dir / "clip.mp4"
+        video_file.write_bytes(b"fake_video_data")
+
+        result = scan_and_process_once([str(watch_dir)], handler)
+
+        assert len(on_match_video_calls) == 1
+        assert on_match_video_calls[0][0] == video_file
+        assert on_match_video_calls[0][1] == ["Zoe"]
+        assert result.matched == 1
+        assert result.processed == 1
+        assert result.errors == 0
+
+    @patch("dmaf.watcher.sha256_of_file")
+    @patch("dmaf.video_processor.find_face_in_video")
+    def test_local_video_no_match_skips_upload(
+        self, mock_find_face, mock_sha256, temp_dir: Path
+    ):
+        """Video file with no match is processed but on_match_video is not called."""
+        from dmaf.watcher import scan_and_process_once
+
+        db_conn = Mock()
+        db_conn.seen.return_value = False
+        mock_sha256.return_value = "video_hash_xyz"
+        mock_find_face.return_value = (False, [], None, None)
+
+        process_fn = Mock()
+        cfg = Mock()
+        cfg.delete_source_after_upload = False
+        handler = NewImageHandler(process_fn, db_conn, cfg)
+        handler.on_match_video = Mock()
+
+        watch_dir = temp_dir / "watch_video_no_match"
+        watch_dir.mkdir()
+        video_file = watch_dir / "nobody.mp4"
+        video_file.write_bytes(b"fake_video_data")
+
+        result = scan_and_process_once([str(watch_dir)], handler)
+
+        handler.on_match_video.assert_not_called()
+        assert result.matched == 0
+        assert result.processed == 1
+        assert result.errors == 0
+
+    @patch("dmaf.watcher.sha256_of_file")
+    @patch("dmaf.video_processor.find_face_in_video")
+    def test_local_video_processing_error_increments_errors(
+        self, mock_find_face, mock_sha256, temp_dir: Path
+    ):
+        """Exception during video processing is caught and counted as an error."""
+        from dmaf.watcher import scan_and_process_once
+
+        db_conn = Mock()
+        db_conn.seen.return_value = False
+        mock_sha256.return_value = "video_hash_err"
+        mock_find_face.side_effect = RuntimeError("cv2 exploded")
+
+        process_fn = Mock()
+        cfg = Mock()
+        cfg.delete_source_after_upload = False
+        handler = NewImageHandler(process_fn, db_conn, cfg)
+        handler.on_match_video = Mock()
+        handler.alert_manager = Mock()
+
+        watch_dir = temp_dir / "watch_video_err"
+        watch_dir.mkdir()
+        video_file = watch_dir / "bad.mp4"
+        video_file.write_bytes(b"corrupt_data")
+
+        result = scan_and_process_once([str(watch_dir)], handler)
+
+        handler.on_match_video.assert_not_called()
+        handler.alert_manager.record_error.assert_called_once()
+        assert result.errors == 1
+        assert result.matched == 0
+
+    @patch("dmaf.watcher.sha256_of_file")
+    @patch("dmaf.video_processor.find_face_in_video")
+    def test_video_and_image_in_same_dir_both_processed(
+        self, mock_find_face, mock_sha256, temp_dir: Path
+    ):
+        """Image and video files in the same directory are both scanned."""
+        from dmaf.watcher import scan_and_process_once
+
+        db_conn = Mock()
+        db_conn.seen.return_value = False
+        mock_sha256.return_value = "hash_any"
+
+        # Video: match; Image: no match
+        mock_find_face.return_value = (True, ["Lenny"], 0.88, 1.0)
+
+        process_fn = Mock(return_value=(False, [], {}))
+        cfg = Mock()
+        cfg.delete_source_after_upload = False
+        cfg.delete_unmatched_after_processing = False
+        handler = NewImageHandler(process_fn, db_conn, cfg)
+
+        on_match_video_calls = []
+
+        def fake_on_match_video(p, who, dedup_key=None):
+            on_match_video_calls.append((p, who))
+
+        handler.on_match_video = fake_on_match_video
+        handler.on_match = Mock()
+
+        watch_dir = temp_dir / "mixed"
+        watch_dir.mkdir()
+
+        # Create a real minimal JPEG so PIL.Image.open doesn't fail
+        img = Image.fromarray(np.zeros((8, 8, 3), dtype=np.uint8))
+        image_file = watch_dir / "photo.jpg"
+        img.save(str(image_file))
+
+        video_file = watch_dir / "clip.mp4"
+        video_file.write_bytes(b"fake_video")
+
+        result = scan_and_process_once([str(watch_dir)], handler)
+
+        assert len(on_match_video_calls) == 1  # video matched
+        handler.on_match.assert_not_called()   # image did not match
+        assert result.matched == 1
+        assert result.processed == 2

@@ -79,6 +79,32 @@ def list_gcs_images(uri: str) -> list[str]:
     return gcs_paths
 
 
+def list_gcs_videos(uri: str) -> list[str]:
+    """
+    List all video files in a GCS bucket/prefix.
+
+    Args:
+        uri: GCS URI like 'gs://bucket/prefix/'
+
+    Returns:
+        List of full GCS paths like 'gs://bucket/path/to/video.mp4'
+    """
+    from dmaf.video_processor import VIDEO_EXTENSIONS
+
+    client = _get_storage_client()
+    bucket_name, prefix = parse_gcs_uri(uri)
+    bucket = client.bucket(bucket_name)
+
+    gcs_paths = []
+    for blob in bucket.list_blobs(prefix=prefix):
+        if blob.name.endswith("/"):
+            continue
+        suffix = Path(blob.name).suffix.lower()
+        if suffix in VIDEO_EXTENSIONS:
+            gcs_paths.append(f"gs://{bucket_name}/{blob.name}")
+    return gcs_paths
+
+
 def download_gcs_blob(gcs_path: str) -> Path:
     """
     Download a GCS blob to a temporary file.

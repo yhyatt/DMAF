@@ -39,7 +39,7 @@ Automatically capture WhatsApp group photos and feed them into the DMAF pipeline
 ## Prerequisites
 
 - **OpenClaw** installed and running with WhatsApp channel linked
-- **GCP project** with DMAF Cloud Run job deployed (see [main deployment guide](README.md))
+- **GCP project** with DMAF Cloud Run job deployed — see **[`setup-secrets.md`](setup-secrets.md)** for full setup
 - **gcloud CLI** authenticated on the OpenClaw host machine
 
 ---
@@ -122,32 +122,38 @@ Create `~/.openclaw/workspace/scripts/dmaf-sync.sh`:
 
 ```bash
 #!/bin/bash
-# DMAF Media Sync — uploads new WhatsApp images to GCS staging bucket
-# Deletes local files after successful upload to prevent disk bloat
+# DMAF Media Sync — uploads new WhatsApp media (images + videos) to GCS staging bucket.
+# Deletes local files after successful upload to prevent disk bloat.
+# Runs via system crontab — no LLM tokens, no OpenClaw agent involvement.
 
-INBOUND_DIR="$HOME/.openclaw/media/inbound"
-GCS_BUCKET="gs://dmaf-production-whatsapp-media"  # Change to your bucket
+INBOUND_DIR="${HOME}/.openclaw/media/inbound"
+GCS_BUCKET="gs://your-project-whatsapp-media"   # ← change to your bucket
 SYNCED=0
 FAILED=0
 
-for f in "$INBOUND_DIR"/*.{jpg,jpeg,png}; do
+# Images
+for f in "${INBOUND_DIR}"/*.{jpg,jpeg,png,heic,webp}; do
     [ -f "$f" ] || continue
     basename=$(basename "$f")
-
-    if gsutil -q cp "$f" "$GCS_BUCKET/$basename" 2>/dev/null; then
-        rm "$f"
-        SYNCED=$((SYNCED + 1))
+    if gsutil -q cp "$f" "${GCS_BUCKET}/${basename}" 2>/dev/null; then
+        rm "$f" && SYNCED=$((SYNCED + 1))
     else
-        FAILED=$((FAILED + 1))
-        echo "Failed: $basename" >&2
+        FAILED=$((FAILED + 1)) && echo "Failed: $basename" >&2
     fi
 done
 
-if [ $SYNCED -gt 0 ] || [ $FAILED -gt 0 ]; then
-    echo "Synced: $SYNCED | Failed: $FAILED"
-else
-    echo "No new images"
-fi
+# Videos
+for f in "${INBOUND_DIR}"/*.{mp4,mov,avi,3gp,mkv,webm}; do
+    [ -f "$f" ] || continue
+    basename=$(basename "$f")
+    if gsutil -q cp "$f" "${GCS_BUCKET}/${basename}" 2>/dev/null; then
+        rm "$f" && SYNCED=$((SYNCED + 1))
+    else
+        FAILED=$((FAILED + 1)) && echo "Failed: $basename" >&2
+    fi
+done
+
+[ $SYNCED -gt 0 ] || [ $FAILED -gt 0 ] && echo "Synced: $SYNCED | Failed: $FAILED" || echo "No new media"
 ```
 
 ```bash
@@ -155,7 +161,7 @@ chmod +x ~/.openclaw/workspace/scripts/dmaf-sync.sh
 ```
 
 **Notes**:
-- Only syncs image files (JPG, JPEG, PNG) — skips videos and other media
+- Handles images (JPG, JPEG, PNG, HEIC, WebP) and videos (MP4, MOV, AVI, 3GP, MKV, WebM)
 - Deletes local files after successful upload to prevent disk bloat
 - Failed uploads are retried on next run (file stays in place)
 
@@ -163,22 +169,32 @@ chmod +x ~/.openclaw/workspace/scripts/dmaf-sync.sh
 
 ## Step 4: Schedule the Sync
 
-### Option A: OpenClaw Cron (Recommended)
+### System Crontab (Recommended — zero token cost)
+
+```bash
+crontab -e
+# Add this line (adjust path to match your user's home directory):
+*/30 * * * * /home/openclaw/.openclaw/workspace/scripts/dmaf-sync.sh >> /tmp/dmaf-sync.log 2>&1
+```
+
+The script runs every 30 minutes as a plain shell process — no LLM call, no API cost.
+
+```bash
+# Check the log
+tail -f /tmp/dmaf-sync.log
+```
+
+### Option B: OpenClaw Cron (burns LLM tokens — only if you need in-chat notifications)
+
+If you want the sync result delivered as a chat message, you can use an OpenClaw agent cron.
+Be aware each run invokes the LLM:
 
 ```bash
 openclaw cron add \
   --name "dmaf:media-sync" \
   --cron "*/30 * * * *" \
-  --message "Run ~/.openclaw/workspace/scripts/dmaf-sync.sh and report how many new images were synced. If zero, reply HEARTBEAT_OK." \
+  --message "Run ~/.openclaw/workspace/scripts/dmaf-sync.sh and report how many new files were synced. If zero, reply HEARTBEAT_OK." \
   --agent main
-```
-
-### Option B: System Crontab
-
-```bash
-crontab -e
-# Add:
-*/30 * * * * /home/openclaw/.openclaw/workspace/scripts/dmaf-sync.sh >> /tmp/dmaf-sync.log 2>&1
 ```
 
 ---

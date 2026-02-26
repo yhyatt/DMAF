@@ -617,7 +617,10 @@ class FirestoreDatabase:
     def mark_uploaded(self, path: str):
         """Mark a file as uploaded to Google Photos."""
         doc_id = self._hash_path(path)
-        self.collection.document(doc_id).update({"uploaded": 1})
+        # Use set+merge instead of update() — update() raises 404 if the doc doesn't
+        # exist (e.g. Firestore write from add_file_with_score not yet visible).
+        # set+merge is idempotent: creates the doc if missing, merges if present.
+        self.collection.document(doc_id).set({"uploaded": 1}, merge=True)
 
     def add_borderline_event(
         self,
