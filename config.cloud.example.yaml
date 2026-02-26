@@ -9,7 +9,11 @@ watch_dirs:
   - "gs://your-project-whatsapp-media"
 
 # Optional: Google Photos album to upload to (null = library root)
-google_photos_album_name: null  # "Family - Auto WhatsApp Imports"
+# Recommended: set an album name to separate DMAF face-matched uploads from
+# your main camera-roll library. Avoids confusion when native Google Photos
+# backup and DMAF both upload the same photo (different compression = different
+# bytes, so Google Photos won't auto-deduplicate them).
+google_photos_album_name: "Family Faces"  # change to taste, or set null for library root
 
 # Face Recognition Settings
 recognition:
