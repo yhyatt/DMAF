@@ -2,16 +2,16 @@
   <img src="assets/dmaf-logo.svg" alt="DMAF Logo" width="200"/>
 </p>
 
-<h1 align="center">DMAF</h1>
-<h3 align="center">🧠 Don't Miss A Face</h3>
+<h1 align="center">🦞 DMAF</h1>
+<h3 align="center">Don't Miss A Face</h3>
 
 <p align="center">
-  <strong>Automated WhatsApp media backup with intelligent face recognition filtering</strong>
+  <strong>Automated WhatsApp photo & video backup with intelligent face recognition</strong>
 </p>
 
 <p align="center">
-  Never miss a photo of your loved ones again! Without the clutter from backup of your entire WhatsApp media — <br/>
-  DMAF watches your WhatsApp media, recognizes faces of people you care, and backs it up to Google Photos.
+  Never miss a moment with your loved ones — DMAF watches your WhatsApp groups,<br/>
+  recognizes the faces you care about in photos <em>and videos</em>, and backs them up to Google Photos automatically.
 </p>
 
 <p align="center">
@@ -36,12 +36,10 @@
   <a href="https://github.com/yhyatt/DMAF/commits/main">
     <img src="https://img.shields.io/github/last-commit/yhyatt/DMAF?style=for-the-badge&logo=git&logoColor=white" alt="Last Commit"/>
   </a>
-  <a href="https://github.com/yhyatt/DMAF">
-    <img src="https://img.shields.io/github/repo-size/yhyatt/DMAF?style=for-the-badge&logo=github" alt="Repo Size"/>
-  </a>
 </p>
 
 <p align="center">
+  <a href="#-openclaw-friendly">OpenClaw 🦞</a> •
   <a href="#-features">Features</a> •
   <a href="#-quick-start">Quick Start</a> •
   <a href="#-how-it-works">How It Works</a> •
@@ -49,6 +47,22 @@
   <a href="#-face-recognition-backends">Backends</a> •
   <a href="#-contributing">Contributing</a>
 </p>
+
+---
+
+## 🦞 OpenClaw Friendly
+
+DMAF is designed to be set up and operated entirely by an AI agent. If you use [OpenClaw](https://openclaw.ai), you can go from zero to a working pipeline with a single prompt.
+
+**Install the DMAF skill** from [ClaWHub](https://clawhub.com/skills/dmaf) (or copy [`deploy/openclaw-skill/`](deploy/openclaw-skill/) to your skills directory), then just say:
+
+> *"Set up DMAF for me. My GCP project ID is `[your-project]` and my WhatsApp is already connected to OpenClaw."*
+
+Your agent will walk through the full setup: GCP project, service account, GCS buckets, reference photos, config, the media sync cron, and the Cloud Scheduler — reading [`deploy/setup-secrets.md`](deploy/setup-secrets.md) as its guide.
+
+**Also friendly for:**
+- 🤖 **Coding agents** (Claude Code, Copilot, Cursor) — [`AGENTS.md`](AGENTS.md) gives full architecture context, test patterns, and common pitfalls
+- 🦾 **Agentic workflows** — DMAF's Cloud Run job, Firestore dedup, and GCS pipeline are all API-first; any agent can trigger scans, check results, and manage known people via `gcloud` / `gsutil`
 
 ---
 
@@ -60,20 +74,41 @@
 
 ### 🔍 Smart Face Recognition
 - **Three powerful backends**: `dlib` (CPU-optimized), `InsightFace` (non-commercial), or `AuraFace` (Apache 2.0, **commercial use OK**)
-- **Extensible architecture**: Plugin-based backend system for adding new recognition engines
-- **Multi-face detection**: Handles group photos with multiple faces
-- **Video clip support**: Scans WhatsApp video clips for known faces — stops on first match and uploads the full clip to Google Photos
-- **Configurable tolerance**: Fine-tune matching sensitivity
-- **Advanced detection thresholds**: Separate thresholds for training vs. production matching
+- **Photos & video clips**: Scans both images and WhatsApp video clips — stops on first match, uploads the full clip
+- **Multi-face detection**: Handles group photos and videos with multiple faces
+- **Configurable tolerance**: Fine-tune matching sensitivity per deployment
+- **Advanced detection thresholds**: Separate thresholds for training vs. production
+
+</td>
+<td width="50%">
+
+### 🦞 OpenClaw Friendly
+- **One-prompt setup**: Install the DMAF skill, describe your setup, done
+- **WhatsApp media capture**: OpenClaw intercepts group photos & videos automatically — no desktop app, no Android required
+- **Zero-maintenance sync**: System cron uploads media to GCS every 30 min, zero LLM tokens
+- **Agent-operable**: Trigger scans, view logs, add people — all via shell/gcloud commands any agent can run
+- 🤖 **Developer friendly**: `AGENTS.md` with architecture, mocks, pitfalls, CI rules
+- 🦾 **Agentic friendly**: API-first pipeline, gcloud-scriptable end to end
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+### 🔄 Auto-Refresh Training
+- **Intelligent updates**: Automatically adds high-quality matched frames to known_people every 60 days
+- **Smart selection**: Picks moderately challenging images (score ≈ 0.65) for best training signal
+- **Face cropping**: Extracts and saves padded face crops
+- **Email notifications**: Get notified when training images are added
 
 </td>
 <td width="50%">
 
 ### ☁️ Google Photos Integration
-- **Automatic uploads**: Seamlessly backup to Google Photos
-- **Album organization**: Optionally organize into specific albums
-- **OAuth2 authentication**: Secure, token-based access
-- **Cloud staging support**: Delete source files after upload (ideal for Dropbox/GCS staging)
+- **Automatic uploads**: Photos and full video clips backed up seamlessly
+- **Album organization**: Optionally organize into a named album
+- **OAuth2 authentication**: Secure, offline token-based access
+- **Cloud staging support**: Delete source files after upload (ideal for GCS pipelines)
 
 </td>
 </tr>
@@ -81,37 +116,20 @@
 <td width="50%">
 
 ### ⚡ Efficient Processing
-- **SHA256 deduplication**: Never process the same image twice
+- **SHA256 deduplication**: Never process the same file twice — survives container restarts via Firestore
+- **Video early exit**: Sampling stops the moment a known face is found — no wasted compute
 - **Intelligent retry logic**: Exponential backoff for network resilience
-- **Thread-safe database**: Handle concurrent operations safely
+- **Scale-to-zero**: Cloud Run Job — no cost when idle
 
 </td>
-<td width="50%">
-
-### 🔧 Developer Friendly
-- **Modern Python 3.10+**: Type hints, Pydantic validation
-- **Flexible configuration**: YAML config with environment variable support
-- **Modular architecture**: Easy to extend and customize
-
-</td>
-</tr>
-<tr>
 <td width="50%">
 
 ### 📧 Observability & Monitoring
 - **Email alerts**: SMTP notifications for errors and borderline recognitions
-- **Score tracking**: Records similarity scores (0.0-1.0) for all matches
-- **Batched notifications**: Hourly alerts prevent email spam
-- **Event retention**: 90-day retention with automatic cleanup
-
-</td>
-<td width="50%">
-
-### 🔄 Auto-Refresh Training
-- **Intelligent updates**: Automatically adds training images every 60 days
-- **Smart selection**: Chooses moderately challenging images (score ≈ 0.65)
-- **Face cropping**: Extracts and saves cropped faces with padding
-- **Email notifications**: Get notified when new training images are added
+- **Score tracking**: Records similarity scores (0.0–1.0) for every match
+- **Configurable timezone**: Alert emails show timestamps in your local time (IANA timezone)
+- **Batched notifications**: Hourly digest prevents inbox spam
+- **Event retention**: 90-day history with automatic cleanup
 
 </td>
 </tr>
@@ -121,48 +139,49 @@
 
 ## 🚀 Quick Start
 
-### Prerequisites
+### 🦞 Have OpenClaw? One prompt away
+
+1. Install the DMAF skill from [ClaWHub](https://clawhub.com/skills/dmaf), or copy [`deploy/openclaw-skill/`](deploy/openclaw-skill/) to `~/.openclaw/skills/dmaf/`
+2. Make sure your WhatsApp channel is linked in OpenClaw
+3. Say to your agent:
+
+```
+Set up DMAF for me. My GCP project ID is [your-project-id] and my WhatsApp 
+is already connected to OpenClaw. Walk me through everything.
+```
+
+Your agent reads [`deploy/setup-secrets.md`](deploy/setup-secrets.md) and [`deploy/openclaw-integration.md`](deploy/openclaw-integration.md) to guide you step by step.
+
+---
+
+### 🛠️ Manual Setup
+
+#### Prerequisites
 
 - Python 3.10 or higher
 - Google Cloud project with Photos Library API enabled
-- WhatsApp media access via:
-  - **[OpenClaw](https://openclaw.ai) integration** (iPhone/Android) - ⭐ Recommended (zero-maintenance, auto-collects group media)
-  - **WhatsApp Desktop + rclone** (iOS/Android) - Cross-platform, zero duplicates
-  - Android direct sync (FolderSync Pro, Syncthing) - Best for Android-only
-  - See [DEPLOYMENT.md](DEPLOYMENT.md#whatsapp-media-sync-setup) for detailed setup guides
+- WhatsApp media access via one of:
+  - **[OpenClaw](https://openclaw.ai) integration** (iPhone/Android) — ⭐ Recommended, see [`deploy/openclaw-integration.md`](deploy/openclaw-integration.md)
+  - **WhatsApp Desktop + rclone** — Cross-platform
+  - **Android direct sync** — FolderSync Pro, Syncthing
 
-### Installation
+#### Installation
 
 ```bash
-# Clone the repository
 git clone https://github.com/yhyatt/DMAF.git
 cd DMAF
 
-# Create virtual environment
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+python -m venv .venv && source .venv/bin/activate
 
-# Install with your preferred face recognition backend
-pip install -e ".[auraface]"  # ⭐ Recommended: Commercial use OK (Apache 2.0)
-# OR
-pip install -e ".[insightface]"  # High accuracy, non-commercial license only
-# OR
-pip install -e ".[face-recognition]"  # CPU-optimized, easier setup
-# OR
-pip install -e ".[all]"  # All backends
+# Choose your face recognition backend:
+pip install -e ".[auraface]"       # ⭐ Apache 2.0 — commercial OK, zero false positives
+pip install -e ".[insightface]"    # High accuracy, non-commercial only
+pip install -e ".[face-recognition]"  # CPU-optimized, easiest setup
 ```
 
-### Setup
+#### Setup
 
-1. **Configure Google Photos API**
-   ```bash
-   # Download client_secret.json from Google Cloud Console
-   # Place it in the project root directory
-   ```
-
-2. **Add reference photos of people to recognize**
-
-   **For local development:**
+1. **Add reference photos** of the people to recognize:
    ```
    data/known_people/
    ├── Alice/
@@ -172,29 +191,20 @@ pip install -e ".[all]"  # All backends
        └── photo1.jpg
    ```
 
-   **For cloud deployment:** Upload reference photos to a GCS bucket instead:
-   ```bash
-   gsutil -m rsync -r -x ".*Zone\.Identifier$" data/known_people/ gs://your-bucket/
-   ```
-   Then set `known_people_gcs_uri: "gs://your-bucket"` in your cloud config.
-
-3. **Create your configuration**
+2. **Configure:**
    ```bash
    cp config.example.yaml config.yaml
-   # Edit config.yaml with your WhatsApp media paths
+   # Edit config.yaml — set watch_dirs and recognition backend
    ```
 
-4. **Run DMAF**
+3. **Run:**
    ```bash
    dmaf --config config.yaml
    # Or: python -m dmaf --config config.yaml
    ```
 
-5. **Optional: Enable Email Alerts** (Recommended)
-   - Get notified about borderline recognitions and errors
-   - See [**DEPLOYMENT.md**](DEPLOYMENT.md#email-alerts-setup-optional-but-recommended) for detailed setup
-
-📖 **For complete setup instructions, troubleshooting, and advanced configuration, see [DEPLOYMENT.md](DEPLOYMENT.md)**
+4. **Cloud deployment** (GCS + Cloud Run, runs on a schedule, scales to zero):
+   → Follow [`deploy/setup-secrets.md`](deploy/setup-secrets.md)
 
 ---
 
@@ -202,129 +212,99 @@ pip install -e ".[all]"  # All backends
 
 ```mermaid
 graph LR
-    A[📱 WhatsApp Media] -->|File Watcher| B[🔍 Face Detection]
-    B -->|Match Found| C[✅ Known Face?]
-    C -->|Yes| D[☁️ Upload to Google Photos]
-    C -->|No| E[⏭️ Skip]
-    D --> F[💾 Mark as Processed]
-    E --> F
-    F -->|Deduplication| G[🚫 Never Reprocess]
+    A[📱 WhatsApp Groups] -->|OpenClaw captures| B[💾 GCS Staging Bucket]
+    B -->|Cloud Scheduler hourly| C[☁️ Cloud Run Job]
+    C --> D{🔍 Face Found?}
+    D -->|Yes — photo or video| E[📸 Upload to Google Photos]
+    D -->|No match| F[⏭️ Skip]
+    E --> G[🗄️ Firestore Dedup]
+    F --> G
+    G -->|SHA256| H[🚫 Never Reprocess]
 ```
 
-1. **Watch** - DMAF monitors your configured WhatsApp media directories for new images and video clips
-2. **Load Known Faces** - Reference photos loaded from local directory or downloaded from GCS bucket (cloud deployment)
-3. **Detect** - Each new image or video clip is analyzed for faces using your chosen backend. Videos are sampled at 1fps (2fps for clips under 10s) and scanning stops as soon as a known face is found
-4. **Recognize** - Detected faces are compared against your known people database
-5. **Upload** - Matched images and full video clips are uploaded to Google Photos
-6. **Deduplicate** - SHA256 hashing ensures no file is ever processed twice
+1. **Capture** — OpenClaw intercepts WhatsApp group media and saves it locally; a system cron uploads it to GCS every 30 min
+2. **Schedule** — Cloud Scheduler triggers the Cloud Run job hourly
+3. **Load** — Reference photos downloaded from GCS bucket at job startup
+4. **Detect** — Each file is scanned: images once, videos sampled at 1–2fps with early exit on first match
+5. **Upload** — Matched photos and full video clips are uploaded to Google Photos
+6. **Deduplicate** — SHA256 hash stored in Firestore; the same file is never processed twice
 
 ---
 
 ## ⚙️ Configuration
 
-DMAF uses a YAML configuration file with full Pydantic validation:
-
 ```yaml
-# Watch directories - your WhatsApp media locations
 watch_dirs:
-  - "/path/to/WhatsApp/Media/WhatsApp Images"
+  - "gs://your-project-whatsapp-media/"   # GCS staging bucket (cloud)
+  - "/path/to/WhatsApp/Images"            # Local directory (dev)
 
-# Google Photos album (optional)
-google_photos_album_name: "Family - Auto WhatsApp"
+known_people_gcs_uri: "gs://your-project-known-people"
 
-# Face recognition settings
 recognition:
-  backend: "auraface"          # "auraface" (recommended), "insightface", or "face_recognition"
-  tolerance: 0.5               # Lower = stricter matching (0.0-1.0)
-  det_thresh: 0.4               # Detection threshold for test images
-  det_thresh_known: 0.3         # More permissive for training images
-  min_face_size_pixels: 80      # Ignore tiny faces
-  require_any_match: true       # Only upload if known face found
-  return_best_only: true        # Use highest confidence face per image
+  backend: "auraface"      # auraface | insightface | face_recognition
+  tolerance: 0.5           # 0.0 (strictest) → 1.0 (loosest)
+  min_face_size_pixels: 20
 
-# Known people directory (local development)
-known_people_dir: "./data/known_people"
+google_photos_album_name: "Family — Auto WhatsApp"
 
-# Known people GCS bucket (cloud deployment — overrides known_people_dir)
-# known_people_gcs_uri: "gs://your-bucket"
-
-# Deduplication database
-dedup:
-  method: "sha256"
-  db_path: "./data/state.sqlite3"
+alerting:
+  enabled: true
+  timezone: "America/New_York"   # IANA name — used in alert email timestamps
+  recipients: ["you@example.com"]
 ```
 
-See [`config.example.yaml`](config.example.yaml) for a complete example with all options.
+Full annotated template: [`config.example.yaml`](config.example.yaml) | Cloud template: [`config.cloud.example.yaml`](config.cloud.example.yaml)
 
 ---
 
 ## 🧠 Face Recognition Backends
 
-DMAF uses a **plugin-based architecture** that makes it easy to add new face recognition engines. Currently includes three production-ready backends:
-
-| Feature | AuraFace ⭐ Recommended | InsightFace | face_recognition (dlib) |
-|---------|-------------|-------------|-------------------------|
-| **License** | ✅ **Apache 2.0** (commercial OK) | ⚠️ Non-commercial only | MIT |
-| **Accuracy (TPR)** | 80-85% | 82.5% | 92.5% |
+| Feature | AuraFace ⭐ | InsightFace | face_recognition (dlib) |
+|---------|------------|-------------|-------------------------|
+| **License** | ✅ Apache 2.0 (commercial OK) | ⚠️ Non-commercial | MIT |
 | **False Positive Rate** | ✅ **0.0%** 🛡️ | 1.87% | ~11% ⚠️ |
-| **Speed** | ⚡ Fast (12x vs dlib) | ⚡ **Fastest** | 🐢 Slow |
-| **GPU Support** | ✅ Yes (CUDA) | ✅ Yes (CUDA) | ❌ CPU only |
-| **Privacy** | **Perfect** - Zero false positives | Good - Rare false positives | Risky - False matches |
-| **Installation** | Requires ONNX Runtime | Requires ONNX Runtime | Requires dlib + cmake |
-| **Best For** | 🏆 **Commercial production apps** | Research/academic projects | Testing, development |
+| **Accuracy (TPR)** | 80–85% | 82.5% | 92.5% |
+| **Speed** | ⚡ Fast (12× vs dlib) | ⚡ Fastest | 🐢 Slow |
+| **GPU Support** | ✅ CUDA | ✅ CUDA | ❌ CPU only |
+| **Best For** | 🏆 Production | Research | Development |
 
-### 🏆 Recommendation
-
-**Use AuraFace** for commercial production deployments. Benchmark testing with 40 family photos + 123 strangers showed:
-- ✅ **Zero false positives** - Perfect privacy (0.0% FPR vs InsightFace's 1.87%)
-- ✅ **Apache 2.0 license** - Fully commercial, no restrictions
-- ✅ **85% detection rate** - Excellent coverage with tolerance=0.5
-- ✅ **Same infrastructure as InsightFace** - 12x faster than dlib
-- ✅ **Production-ready** - Conservative settings prevent privacy violations
-
-**Use InsightFace** if you need academic/research use only and want slightly higher accuracy (non-commercial license).
-
-**Use face_recognition** for quick testing or development only (high false positive rate makes it unsuitable for production).
+**Use AuraFace** for production — zero false positives means zero privacy violations. Commercial license, no restrictions.
 
 ### 🔌 Extensible Architecture
 
-Adding a new backend is simple - implement the interface:
+Adding a new backend is simple:
 ```python
 # src/dmaf/face_recognition/your_backend.py
-def load_known_faces(known_root: str, **params):
-    """Load and encode faces from known_people directory."""
-    ...
-
-def best_match(known_faces, test_image, **params):
-    """Match test image against known faces."""
-    ...
+def load_known_faces(known_root: str, **params): ...
+def best_match(known_faces, test_image, **params): ...
 ```
-
-Register in `factory.py` and you're done! See existing backends for examples.
+Register in `factory.py` and you're done. See existing backends for examples.
 
 ---
 
 ## 📁 Project Structure
 
 ```
-dmaf/
+DMAF/
 ├── src/dmaf/
-│   ├── __main__.py           # CLI entry point
-│   ├── config.py             # Pydantic settings
-│   ├── database.py           # Thread-safe SQLite
-│   ├── watcher.py            # File monitoring
-│   ├── face_recognition/     # Detection backends
-│   │   ├── factory.py        # Backend selection
-│   │   ├── dlib_backend.py   # face_recognition
-│   │   ├── insightface_backend.py
-│   │   └── auraface_backend.py  # AuraFace (Apache 2.0)
-│   ├── google_photos/        # Google Photos API
-│   └── utils/                # Retry logic, helpers
-├── data/
-│   ├── known_people/         # Your reference images
-│   └── state.sqlite3         # Deduplication DB
-├── config.yaml               # Your configuration
-└── pyproject.toml            # Package definition
+│   ├── __main__.py           # CLI entrypoint + Uploader (on_match / on_match_video)
+│   ├── config.py             # Pydantic settings — all fields with defaults + docs
+│   ├── watcher.py            # Core scan loop + file processing helpers
+│   ├── video_processor.py    # iter_frames generator, find_face_in_video (early exit)
+│   ├── gcs_watcher.py        # GCS helpers: list, download, cleanup
+│   ├── database.py           # SQLite (local) + Firestore (cloud) dedup backends
+│   ├── known_refresh.py      # Auto-refresh training images
+│   ├── alerting/             # Email alert batching and templates
+│   └── face_recognition/     # Backend factory: AuraFace, InsightFace, dlib
+├── deploy/
+│   ├── setup-secrets.md      # 🔑 All credentials setup, start here
+│   ├── openclaw-integration.md  # 🦞 OpenClaw media sync guide
+│   ├── openclaw-skill/       # 🦞 Installable OpenClaw skill (ClaWHub)
+│   └── README.md             # GCP deployment walkthrough
+├── tests/                    # pytest — mirrors src/dmaf structure
+├── AGENTS.md                 # 🤖 Coding agent guide (Claude, Copilot, Cursor)
+├── config.example.yaml       # Annotated config template (local dev)
+└── config.cloud.example.yaml # Annotated config template (cloud deployment)
 ```
 
 ---
@@ -332,19 +312,15 @@ dmaf/
 ## 🛠️ Development
 
 ```bash
-# Install dev dependencies
 pip install -e ".[dev,all]"
+pre-commit install          # ruff + mypy before every commit
 
-# Run tests
-pytest tests/ -v --cov=dmaf
-
-# Type checking
-mypy src/dmaf
-
-# Linting
-ruff check src/
-black --check src/
+pytest tests/ -v            # Run tests
+mypy src/dmaf               # Type check
+ruff check src/ tests/      # Lint
 ```
+
+See [`AGENTS.md`](AGENTS.md) for architecture decisions, mock patterns, and CI rules.
 
 ---
 
@@ -352,21 +328,17 @@ black --check src/
 
 - [x] **Phase A**: Core bug fixes (RGB/BGR, caching, retry logic) ✅
 - [x] **Phase B**: Project restructuring (src layout, Pydantic) ✅
-- [x] **Phase C**: Unit tests (75% coverage, 286 tests) ✅
+- [x] **Phase C**: Unit tests (286 tests, 75%+ coverage) ✅
 - [x] **Phase D**: Face recognition benchmarking & LOOCV validation ✅
 - [x] **Phase D+**: Advanced detection tuning & FPR analysis ✅
 - [x] **Phase E**: CI/CD (GitHub Actions, automated testing) ✅
-- [x] **Phase F-prep**: Observability & auto-refresh (alerts, score tracking, AuraFace backend) ✅ **NEW**
+- [x] **Phase F-prep**: Observability & auto-refresh (alerts, score tracking, AuraFace) ✅
 - [x] **Phase F**: Cloud deployment (GCS + Cloud Run + Firestore) ✅
-- [ ] **Phase G**: Documentation & open-source 🚧
-
-**Current Progress:** ~90% complete (8 of 9 phases done)
+- [x] **Phase G**: Documentation, OpenClaw skill, open-source ready ✅
 
 ---
 
 ## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/amazing-feature`)
@@ -378,26 +350,27 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT License — see [LICENSE](LICENSE) for details.
 
 ---
 
 ## 🙏 Acknowledgments
 
-- [AuraFace](https://huggingface.co/fal/AuraFace-v1) - Apache 2.0 licensed face recognition model
-- [InsightFace](https://github.com/deepinsight/insightface) - Deep learning face analysis
-- [face_recognition](https://github.com/ageitgey/face_recognition) - dlib-based face recognition
+- [AuraFace](https://huggingface.co/fal/AuraFace-v1) — Apache 2.0 face recognition model
+- [InsightFace](https://github.com/deepinsight/insightface) — Deep learning face analysis
+- [face_recognition](https://github.com/ageitgey/face_recognition) — dlib-based recognition
+- [OpenClaw](https://openclaw.ai) — AI agent platform with WhatsApp integration
 - [Google Photos Library API](https://developers.google.com/photos/library/guides/get-started)
-- [Watchdog](https://github.com/gorakhargosh/watchdog) - File system monitoring
+- [Watchdog](https://github.com/gorakhargosh/watchdog) — File system monitoring
 
 ---
 
 <p align="center">
-  <sub>Made with ❤️ by <a href="https://github.com/yhyatt">yhyatt</a></sub>
+  <sub>Made with 🦀 by <a href="https://github.com/yhyatt">yhyatt</a></sub>
 </p>
 
 <p align="center">
   <a href="https://github.com/yhyatt/DMAF">
-    <img src="https://img.shields.io/badge/⭐_Star_this_repo-If_it_helped_you!-yellow?style=for-the-badge" alt="Star this repo"/>
+    <img src="https://img.shields.io/badge/🦞_Star_this_repo-If_it_helped_you!-yellow?style=for-the-badge" alt="Star this repo"/>
   </a>
 </p>

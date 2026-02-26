@@ -1,5 +1,9 @@
 # DMAF Cloud Deployment Guide
 
+> **Recommended starting point:** [`setup-secrets.md`](setup-secrets.md) is the concise, up-to-date guide for new deployments.
+> This document is a detailed reference walkthrough — useful if you want more context on each step.
+> For OpenClaw integration, see [`openclaw-integration.md`](openclaw-integration.md).
+
 This guide walks you through deploying DMAF to Google Cloud Platform using Cloud Run Jobs for cost-optimized batch processing.
 
 **Target Cost**: $0-5/month within GCP free tier
@@ -11,7 +15,7 @@ This guide walks you through deploying DMAF to Google Cloud Platform using Cloud
 ```
 ┌─────────────────┐      ┌──────────────────┐      ┌─────────────────┐
 │ Cloud Scheduler │ ───> │ Cloud Run Job    │ ───> │ Google Photos   │
-│ (every 3 hours) │      │ (scan-once mode) │      │ API             │
+│ (hourly) │      │ (scan-once mode) │      │ API             │
 └─────────────────┘      └──────────────────┘      └─────────────────┘
                                   │
                                   ├─> GCS Bucket (WhatsApp media)
@@ -302,10 +306,10 @@ gcloud logging read "resource.type=cloud_run_job" \
 Automate execution with Cloud Scheduler:
 
 ```bash
-# Create scheduler job (runs every 3 hours)
+# Create scheduler job (runs hourly)
 gcloud scheduler jobs create http dmaf-schedule \
   --location=us-central1 \
-  --schedule="0 */3 * * *" \
+  --schedule="0 * * * *" \
   --uri="https://us-central1-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/$PROJECT_ID/jobs/dmaf-scan:run" \
   --http-method=POST \
   --oauth-service-account-email=$SA_EMAIL
@@ -318,7 +322,7 @@ gcloud scheduler jobs describe dmaf-schedule --location=us-central1
 ```
 
 **Schedule options**:
-- `0 */3 * * *` - Every 3 hours (recommended - stays in free tier)
+- `0 * * * *` - Every hour (recommended - stays in free tier)
 - `*/15 * * * *` - Every 15 minutes (faster, ~$1-3/month overage)
 - `0 * * * *` - Every hour
 - `0 0 * * *` - Once daily at midnight
@@ -676,7 +680,7 @@ delete_unmatched_after_processing: false  # Set to true if you want to auto-clea
    - Bucket: `$PROJECT_ID-whatsapp-media`
    - Local folder: `/storage/emulated/0/WhatsApp/Media/WhatsApp Images/`
    - Sync type: To remote only
-   - Schedule: Every 3 hours (match Cloud Scheduler frequency)
+   - Schedule: Every hour (match Cloud Scheduler frequency)
 
 ### Option B: rclone + Termux (Free, Technical)
 
@@ -702,7 +706,7 @@ delete_unmatched_after_processing: false  # Set to true if you want to auto-clea
 
    # Add to crontab
    crontab -e
-   # Add: 0 */3 * * * ~/sync-whatsapp.sh
+   # Add: 0 * * * * ~/sync-whatsapp.sh
    ```
 
 ### Option C: Syncthing (Free, Cross-Platform)
