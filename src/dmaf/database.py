@@ -134,6 +134,17 @@ class Database:
         result = cur.fetchone()
         return result is not None
 
+    def seen_by_sha256(self, sha256: str) -> bool:
+        """Check if a file with this content hash has already been processed.
+
+        Used for content-based deduplication: the same photo shared via multiple
+        WhatsApp groups or synced from both camera roll and a group will have
+        different GCS paths but identical bytes, and thus the same SHA-256.
+        """
+        conn = self._get_conn()
+        cur = conn.execute("SELECT 1 FROM files WHERE sha256=? LIMIT 1", (sha256,))
+        return cur.fetchone() is not None
+
     def add_file(self, path: str, sha256: str | None, matched: int, uploaded: int):
         """Add a new file record to the database."""
         with self._write_lock:
@@ -571,6 +582,19 @@ class FirestoreDatabase:
         doc_id = self._hash_path(path)
         doc = self.collection.document(doc_id).get()
         return bool(doc.exists)
+
+    def seen_by_sha256(self, sha256: str) -> bool:
+        """Check if a file with this content hash has already been processed.
+
+        Used for content-based deduplication: the same photo shared via multiple
+        WhatsApp groups or synced from both camera roll and a group will have
+        different GCS paths but identical bytes, and thus the same SHA-256.
+
+        Note: requires the ``sha256`` field to be queryable in Firestore (it is
+        indexed automatically as a single-field index on all collections).
+        """
+        docs = self.collection.where("sha256", "==", sha256).limit(1).stream()
+        return any(True for _ in docs)
 
     def add_file(self, path: str, sha256: str | None, matched: int, uploaded: int):
         """Add a new file record to Firestore."""
