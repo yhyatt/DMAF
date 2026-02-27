@@ -59,6 +59,12 @@ def ensure_album(creds: Credentials, album_name: str | None) -> str | None:
     return result if isinstance(result, str) else None
 
 
+def _firestore_client(project: str):
+    """Create a Firestore client (extracted for testability)."""
+    from google.cloud import firestore as _fs  # noqa: PLC0415
+    return _fs.Client(project=project), _fs.SERVER_TIMESTAMP
+
+
 def get_or_create_album_id(
     creds: Credentials,
     album_name: str,
@@ -86,10 +92,8 @@ def get_or_create_album_id(
     """
     import logging
 
-    from google.cloud import firestore as _fs
-
     logger = logging.getLogger(__name__)
-    db = _fs.Client(project=firestore_project)
+    db, SERVER_TIMESTAMP = _firestore_client(firestore_project)
     ref = db.collection(firestore_collection).document("google_photos_album")
 
     doc = ref.get()
@@ -107,7 +111,7 @@ def get_or_create_album_id(
         ref.set({
             "album_name": album_name,
             "album_id": album_id,
-            "created_at": _fs.SERVER_TIMESTAMP,
+            "created_at": SERVER_TIMESTAMP,
         })
         logger.info(f"Created and cached Google Photos album '{album_name}' -> {album_id[:12]}...")
     return album_id

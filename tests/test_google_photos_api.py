@@ -165,26 +165,31 @@ class TestEnsureAlbum:
 class TestGetOrCreateAlbumId:
     """Test Firestore-cached album ID lookup."""
 
-    @patch("dmaf.google_photos.api.requests.post")
-    @patch("google.cloud.firestore.Client")
-    def test_returns_cached_id(self, mock_fs_client, mock_post):
-        """Cached album ID is returned without calling Google Photos API."""
-        from dmaf.google_photos.api import get_or_create_album_id
-
-        mock_creds = Mock()
-        mock_creds.token = "tok"
-
+    def _make_fs_mock(self, exists: bool = True, data: dict | None = None):
+        """Build a mock Firestore db + ref that _firestore_client() returns."""
         mock_doc = Mock()
-        mock_doc.exists = True
-        mock_doc.to_dict.return_value = {"album_name": "Family Faces", "album_id": "cached_id_123"}
-
+        mock_doc.exists = exists
+        mock_doc.to_dict.return_value = data or {}
         mock_ref = Mock()
         mock_ref.get.return_value = mock_doc
         mock_collection = Mock()
         mock_collection.document.return_value = mock_ref
         mock_db = Mock()
         mock_db.collection.return_value = mock_collection
-        mock_fs_client.return_value = mock_db
+        return mock_db, mock_ref
+
+    @patch("dmaf.google_photos.api.requests.post")
+    @patch("dmaf.google_photos.api._firestore_client")
+    def test_returns_cached_id(self, mock_fs, mock_post):
+        """Cached album ID is returned without calling Google Photos API."""
+        from dmaf.google_photos.api import get_or_create_album_id
+
+        mock_creds = Mock()
+        mock_creds.token = "tok"
+        mock_db, _ = self._make_fs_mock(
+            exists=True, data={"album_name": "Family Faces", "album_id": "cached_id_123"}
+        )
+        mock_fs.return_value = (mock_db, "ts")
 
         result = get_or_create_album_id(mock_creds, "Family Faces", "proj")
 
@@ -192,24 +197,15 @@ class TestGetOrCreateAlbumId:
         mock_post.assert_not_called()  # No Google Photos API call
 
     @patch("dmaf.google_photos.api.requests.post")
-    @patch("google.cloud.firestore.Client")
-    def test_creates_and_caches_on_first_run(self, mock_fs_client, mock_post):
+    @patch("dmaf.google_photos.api._firestore_client")
+    def test_creates_and_caches_on_first_run(self, mock_fs, mock_post):
         """On first run (no cache), album is created and ID is cached."""
         from dmaf.google_photos.api import get_or_create_album_id
 
         mock_creds = Mock()
         mock_creds.token = "tok"
-
-        mock_doc = Mock()
-        mock_doc.exists = False
-        mock_ref = Mock()
-        mock_ref.get.return_value = mock_doc
-        mock_collection = Mock()
-        mock_collection.document.return_value = mock_ref
-        mock_db = Mock()
-        mock_db.collection.return_value = mock_collection
-        mock_fs_client.return_value = mock_db
-        
+        mock_db, mock_ref = self._make_fs_mock(exists=False)
+        mock_fs.return_value = (mock_db, "ts")
 
         mock_response = Mock()
         mock_response.json.return_value = {"id": "brand_new_id"}
@@ -224,25 +220,17 @@ class TestGetOrCreateAlbumId:
         assert saved["album_name"] == "Family Faces"
 
     @patch("dmaf.google_photos.api.requests.post")
-    @patch("google.cloud.firestore.Client")
-    def test_recreates_when_album_name_changes(self, mock_fs_client, mock_post):
+    @patch("dmaf.google_photos.api._firestore_client")
+    def test_recreates_when_album_name_changes(self, mock_fs, mock_post):
         """If album name changed in config, a new album is created."""
         from dmaf.google_photos.api import get_or_create_album_id
 
         mock_creds = Mock()
         mock_creds.token = "tok"
-
-        mock_doc = Mock()
-        mock_doc.exists = True
-        mock_doc.to_dict.return_value = {"album_name": "Old Name", "album_id": "old_id"}
-
-        mock_ref = Mock()
-        mock_ref.get.return_value = mock_doc
-        mock_collection = Mock()
-        mock_collection.document.return_value = mock_ref
-        mock_db = Mock()
-        mock_db.collection.return_value = mock_collection
-        mock_fs_client.return_value = mock_db
+        mock_db, mock_ref = self._make_fs_mock(
+            exists=True, data={"album_name": "Old Name", "album_id": "old_id"}
+        )
+        mock_fs.return_value = (mock_db, "ts")
         
 
         mock_response = Mock()
