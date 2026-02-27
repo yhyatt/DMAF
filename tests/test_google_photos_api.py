@@ -123,7 +123,7 @@ class TestGetCreds:
 
 
 class TestEnsureAlbum:
-    """Test album lookup and creation."""
+    """Test album creation (ensure_album only creates, never lists)."""
 
     def test_none_album_name(self):
         """Test that None album_name returns None."""
@@ -131,77 +131,127 @@ class TestEnsureAlbum:
         result = ensure_album(mock_creds, None)
         assert result is None
 
-    @patch("dmaf.google_photos.api.requests.get")
-    def test_find_existing_album(self, mock_get):
-        """Test finding an existing album by name."""
-        mock_creds = Mock()
-        mock_creds.token = "test_token"
-
-        # Mock API response with existing album
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "albums": [
-                {"id": "album_1", "title": "Other Album"},
-                {"id": "album_2", "title": "My Test Album"},
-                {"id": "album_3", "title": "Another Album"},
-            ]
-        }
-        mock_get.return_value = mock_response
-
-        album_id = ensure_album(mock_creds, "My Test Album")
-
-        assert album_id == "album_2"
-        mock_get.assert_called_once()
-
-    @patch("dmaf.google_photos.api.requests.get")
     @patch("dmaf.google_photos.api.requests.post")
-    def test_create_new_album(self, mock_post, mock_get):
-        """Test creating a new album when it doesn't exist."""
+    def test_create_album(self, mock_post):
+        """Test creating a new album via POST."""
         mock_creds = Mock()
         mock_creds.token = "test_token"
 
-        # Mock GET response (album not found)
-        mock_get_response = Mock()
-        mock_get_response.status_code = 200
-        mock_get_response.json.return_value = {"albums": []}
-        mock_get.return_value = mock_get_response
-
-        # Mock POST response (album created)
         mock_post_response = Mock()
         mock_post_response.json.return_value = {"id": "new_album_id"}
         mock_post.return_value = mock_post_response
 
-        album_id = ensure_album(mock_creds, "New Album")
+        album_id = ensure_album(mock_creds, "My Test Album")
 
         assert album_id == "new_album_id"
-
-        # Verify POST was called with correct data
         mock_post.assert_called_once()
         call_kwargs = mock_post.call_args[1]
-        assert call_kwargs["json"] == {"album": {"title": "New Album"}}
+        assert call_kwargs["json"] == {"album": {"title": "My Test Album"}}
 
-    @patch("dmaf.google_photos.api.requests.get")
     @patch("dmaf.google_photos.api.requests.post")
-    def test_api_error_no_albums_returned(self, mock_post, mock_get):
-        """Test handling API response without albums key."""
+    def test_create_album_missing_id(self, mock_post):
+        """Test handling response without an id field."""
         mock_creds = Mock()
         mock_creds.token = "test_token"
 
-        # Mock API response without albums
-        mock_get_response = Mock()
-        mock_get_response.status_code = 200
-        mock_get_response.json.return_value = {}
-        mock_get.return_value = mock_get_response
-
-        # Mock album creation
         mock_post_response = Mock()
-        mock_post_response.json.return_value = {"id": "created_album_id"}
+        mock_post_response.json.return_value = {}
         mock_post.return_value = mock_post_response
 
-        # Should proceed to create album when not found
-        album_id = ensure_album(mock_creds, "Album")
-        assert album_id == "created_album_id"
+        result = ensure_album(mock_creds, "Album")
+        assert result is None
+
+
+class TestGetOrCreateAlbumId:
+    """Test Firestore-cached album ID lookup."""
+
+    @patch("dmaf.google_photos.api.requests.post")
+    @patch("google.cloud.firestore.Client")
+    def test_returns_cached_id(self, mock_fs_client, mock_post):
+        """Cached album ID is returned without calling Google Photos API."""
+        from dmaf.google_photos.api import get_or_create_album_id
+
+        mock_creds = Mock()
+        mock_creds.token = "tok"
+
+        mock_doc = Mock()
+        mock_doc.exists = True
+        mock_doc.to_dict.return_value = {"album_name": "Family Faces", "album_id": "cached_id_123"}
+
+        mock_ref = Mock()
+        mock_ref.get.return_value = mock_doc
+        mock_collection = Mock()
+        mock_collection.document.return_value = mock_ref
+        mock_db = Mock()
+        mock_db.collection.return_value = mock_collection
+        mock_fs_client.return_value = mock_db
+
+        result = get_or_create_album_id(mock_creds, "Family Faces", "proj")
+
+        assert result == "cached_id_123"
+        mock_post.assert_not_called()  # No Google Photos API call
+
+    @patch("dmaf.google_photos.api.requests.post")
+    @patch("google.cloud.firestore.Client")
+    def test_creates_and_caches_on_first_run(self, mock_fs_client, mock_post):
+        """On first run (no cache), album is created and ID is cached."""
+        from dmaf.google_photos.api import get_or_create_album_id
+
+        mock_creds = Mock()
+        mock_creds.token = "tok"
+
+        mock_doc = Mock()
+        mock_doc.exists = False
+        mock_ref = Mock()
+        mock_ref.get.return_value = mock_doc
+        mock_collection = Mock()
+        mock_collection.document.return_value = mock_ref
+        mock_db = Mock()
+        mock_db.collection.return_value = mock_collection
+        mock_fs_client.return_value = mock_db
+        
+
+        mock_response = Mock()
+        mock_response.json.return_value = {"id": "brand_new_id"}
+        mock_post.return_value = mock_response
+
+        result = get_or_create_album_id(mock_creds, "Family Faces", "proj")
+
+        assert result == "brand_new_id"
+        mock_ref.set.assert_called_once()
+        saved = mock_ref.set.call_args[0][0]
+        assert saved["album_id"] == "brand_new_id"
+        assert saved["album_name"] == "Family Faces"
+
+    @patch("dmaf.google_photos.api.requests.post")
+    @patch("google.cloud.firestore.Client")
+    def test_recreates_when_album_name_changes(self, mock_fs_client, mock_post):
+        """If album name changed in config, a new album is created."""
+        from dmaf.google_photos.api import get_or_create_album_id
+
+        mock_creds = Mock()
+        mock_creds.token = "tok"
+
+        mock_doc = Mock()
+        mock_doc.exists = True
+        mock_doc.to_dict.return_value = {"album_name": "Old Name", "album_id": "old_id"}
+
+        mock_ref = Mock()
+        mock_ref.get.return_value = mock_doc
+        mock_collection = Mock()
+        mock_collection.document.return_value = mock_ref
+        mock_db = Mock()
+        mock_db.collection.return_value = mock_collection
+        mock_fs_client.return_value = mock_db
+        
+
+        mock_response = Mock()
+        mock_response.json.return_value = {"id": "new_name_id"}
+        mock_post.return_value = mock_response
+
+        result = get_or_create_album_id(mock_creds, "New Name", "proj")
+
+        assert result == "new_name_id"
 
 
 class TestUploadBytes:

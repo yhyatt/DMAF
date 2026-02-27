@@ -18,7 +18,7 @@ from dmaf.alerting import AlertManager
 from dmaf.config import Settings
 from dmaf.database import get_database
 from dmaf.face_recognition import best_match, load_known_faces
-from dmaf.google_photos import create_media_item, ensure_album, get_creds, upload_bytes
+from dmaf.google_photos import create_media_item, ensure_album, get_creds, get_or_create_album_id, upload_bytes
 from dmaf.known_refresh import KnownRefreshManager
 from dmaf.watcher import NewImageHandler, run_watch, scan_and_process_once
 
@@ -209,7 +209,11 @@ def main(argv: list[str] | None = None) -> int:
     album_id = None
     if settings.google_photos_album_name:
         try:
-            album_id = ensure_album(creds, settings.google_photos_album_name)
+            album_id = get_or_create_album_id(
+                creds,
+                settings.google_photos_album_name,
+                firestore_project=settings.dedup.firestore_project,
+            )
         except Exception as e:
             logger.warning(f"Album ensure failed - continuing without album: {e}")
             album_id = None
