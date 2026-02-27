@@ -85,6 +85,7 @@ def get_or_create_album_id(
         Album ID string, or None on failure.
     """
     import logging
+
     from google.cloud import firestore as _fs
 
     logger = logging.getLogger(__name__)
