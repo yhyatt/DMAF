@@ -28,41 +28,30 @@ def get_creds(
         else:
             flow = InstalledAppFlow.from_client_secrets_file(client_secret_path, SCOPES)
             creds = flow.run_local_server(port=0)
-        # Try to save refreshed token (gracefully handle read-only filesystems)
         try:
             with open(token_path, "w") as f:
                 f.write(creds.to_json())
         except OSError as e:
-            # Read-only filesystem in cloud deployment - token refresh is in-memory only
             import logging
-
             logging.getLogger(__name__).debug(f"Could not write token file (read-only): {e}")
     return creds
 
 
 def ensure_album(creds: Credentials, album_name: str | None) -> str | None:
+    """Create a new Google Photos album and return its ID.
+
+    NOTE: photoslibrary.appendonly (DMAF's scope) cannot list existing albums —
+    that requires photoslibrary.readonly. This function only creates.
+    Use get_or_create_album_id to avoid creating duplicates across Cloud Run
+    invocations.
+    """
     if not album_name:
         return None
-    # Needs photoslibrary.readonly or photoslibrary scope to list-create albums.
-    # Safer approach: create once manually and paste album ID here.
-    # Example call below requires elevated scopes - comment out if using appendonly-only.
-    headers = {"Authorization": f"Bearer {creds.token}"}
-    # Try to find existing album
-    r = requests.get(
-        "https://photoslibrary.googleapis.com/v1/albums?pageSize=50", headers=headers, timeout=30
-    )
-    if r.status_code == 200:
-        albums_list = r.json().get("albums", [])
-        for album in albums_list:
-            if album.get("title") == album_name:
-                album_id = album.get("id")
-                return album_id if isinstance(album_id, str) else None
-    # Create album
-    body_dict = {"album": {"title": album_name}}
+    headers = {"Authorization": f"Bearer {creds.token}", "Content-Type": "application/json"}
     r = requests.post(
         "https://photoslibrary.googleapis.com/v1/albums",
         headers=headers,
-        json=body_dict,
+        json={"album": {"title": album_name}},
         timeout=30,
     )
     r.raise_for_status()
@@ -70,21 +59,68 @@ def ensure_album(creds: Credentials, album_name: str | None) -> str | None:
     return result if isinstance(result, str) else None
 
 
-@with_retry(RetryConfig(max_retries=3, base_delay=2.0))
-def upload_bytes(creds: Credentials, img_bytes: bytes, filename: str) -> str:
-    """
-    Upload raw image bytes to Google Photos.
+def _firestore_client(project: str):
+    """Create a Firestore client (extracted for testability)."""
+    from google.cloud import firestore as _fs  # noqa: PLC0415
+    return _fs.Client(project=project), _fs.SERVER_TIMESTAMP
 
-    Automatically retries on network errors and 429/5xx HTTP errors.
+
+def get_or_create_album_id(
+    creds: Credentials,
+    album_name: str,
+    firestore_project: str,
+    firestore_collection: str = "dmaf_config",
+) -> str | None:
+    """Return a cached Google Photos album ID, creating the album only once.
+
+    The album ID is stored in Firestore under
+    {firestore_collection}/google_photos_album. On subsequent Cloud Run
+    invocations the cached ID is returned immediately — no duplicate albums.
+
+    Root cause this fixes: appendonly scope cannot list albums, so the old
+    ensure_album silently failed the GET, then created a new album on every
+    job run (once per hour = many duplicate "Family Faces" albums).
 
     Args:
-        creds: Google OAuth credentials
-        img_bytes: Image data as bytes
-        filename: Original filename (for metadata)
+        creds: Google OAuth credentials (appendonly scope is sufficient).
+        album_name: Desired album title.
+        firestore_project: GCP project ID for Firestore.
+        firestore_collection: Firestore collection for DMAF config docs.
 
     Returns:
-        Upload token to use with create_media_item
+        Album ID string, or None on failure.
     """
+    import logging
+
+    logger = logging.getLogger(__name__)
+    db, SERVER_TIMESTAMP = _firestore_client(firestore_project)
+    ref = db.collection(firestore_collection).document("google_photos_album")
+
+    doc = ref.get()
+    if doc.exists:
+        data = doc.to_dict() or {}
+        cached_id = data.get("album_id")
+        cached_name = data.get("album_name")
+        if cached_id and cached_name == album_name:
+            cached_id_str = str(cached_id)
+            logger.debug(f"Using cached album ID for '{album_name}': {cached_id_str[:12]}...")
+            return cached_id_str
+        # Album name changed — fall through to create a new one
+
+    album_id = ensure_album(creds, album_name)
+    if album_id:
+        ref.set({
+            "album_name": album_name,
+            "album_id": album_id,
+            "created_at": SERVER_TIMESTAMP,
+        })
+        logger.info(f"Created and cached Google Photos album '{album_name}' -> {album_id[:12]}...")
+    return album_id
+
+
+@with_retry(RetryConfig(max_retries=3, base_delay=2.0))
+def upload_bytes(creds: Credentials, img_bytes: bytes, filename: str) -> str:
+    """Upload raw image bytes to Google Photos."""
     headers = {
         "Authorization": f"Bearer {creds.token}",
         "Content-type": "application/octet-stream",
@@ -105,23 +141,7 @@ def upload_bytes(creds: Credentials, img_bytes: bytes, filename: str) -> str:
 def create_media_item(
     creds: Credentials, upload_token: str, album_id: str | None, description: str | None = None
 ):
-    """
-    Create a media item in Google Photos from an upload token.
-
-    Automatically retries on network errors and 429/5xx HTTP errors.
-
-    Args:
-        creds: Google OAuth credentials
-        upload_token: Token from upload_bytes()
-        album_id: Optional album ID to add the item to
-        description: Optional description for the media item
-
-    Returns:
-        Media item ID
-
-    Raises:
-        RuntimeError: If Google Photos API returns an error status
-    """
+    """Create a media item in Google Photos from an upload token."""
     headers = {"Authorization": f"Bearer {creds.token}", "Content-Type": "application/json"}
     new_item: dict[str, str | dict[str, str]] = {"simpleMediaItem": {"uploadToken": upload_token}}
     if description:
