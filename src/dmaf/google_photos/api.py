@@ -102,8 +102,9 @@ def get_or_create_album_id(
         cached_id = data.get("album_id")
         cached_name = data.get("album_name")
         if cached_id and cached_name == album_name:
-            logger.debug(f"Using cached album ID for '{album_name}': {cached_id[:12]}...")
-            return str(cached_id)
+            cached_id_str = str(cached_id)
+            logger.debug(f"Using cached album ID for '{album_name}': {cached_id_str[:12]}...")
+            return cached_id_str
         # Album name changed — fall through to create a new one
 
     album_id = ensure_album(creds, album_name)
