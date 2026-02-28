@@ -15,11 +15,15 @@
   <strong>Set it up once. After that: zero LLM tokens, minimal cloud costs, fully autonomous.</strong>
 </p>
 
+<div align="center">
+
 [![CI](https://github.com/yhyatt/DMAF/actions/workflows/ci.yml/badge.svg)](https://github.com/yhyatt/DMAF/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/yhyatt/DMAF/blob/main/LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://github.com/yhyatt/DMAF)
 [![OpenClaw Skill](https://img.shields.io/badge/OpenClaw-Skill-blue)](https://clawhub.ai/skills/dmaf)
 [![Contributing](https://img.shields.io/badge/contributions-welcome-brightgreen)](https://github.com/yhyatt/DMAF/blob/main/CONTRIBUTING.md)
+
+</div>
 
 <p align="center">
   <a href="#-openclaw-friendly">OpenClaw 🦞</a> •
