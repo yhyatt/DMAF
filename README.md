@@ -15,29 +15,11 @@
   <strong>Set it up once. After that: zero LLM tokens, minimal cloud costs, fully autonomous.</strong>
 </p>
 
-<p align="center">
-  <a href="https://github.com/yhyatt/DMAF/actions/workflows/ci.yml">
-    <img src="https://img.shields.io/github/actions/workflow/status/yhyatt/DMAF/ci.yml?branch=main&style=for-the-badge&logo=github&label=CI" alt="CI Status"/>
-  </a>
-  <a href="https://github.com/yhyatt/DMAF/blob/main/LICENSE">
-    <img src="https://img.shields.io/github/license/yhyatt/DMAF?style=for-the-badge" alt="License"/>
-  </a>
-  <a href="https://github.com/yhyatt/DMAF">
-    <img src="https://img.shields.io/badge/Python-3.10%2B-blue?style=for-the-badge&logo=python&logoColor=white" alt="Python Version"/>
-  </a>
-</p>
-
-<p align="center">
-  <a href="https://github.com/yhyatt/DMAF/stargazers">
-    <img src="https://img.shields.io/github/stars/yhyatt/DMAF?style=for-the-badge&logo=github" alt="GitHub Stars"/>
-  </a>
-  <a href="https://github.com/yhyatt/DMAF/issues">
-    <img src="https://img.shields.io/github/issues/yhyatt/DMAF?style=for-the-badge&logo=github" alt="GitHub Issues"/>
-  </a>
-  <a href="https://github.com/yhyatt/DMAF/commits/main">
-    <img src="https://img.shields.io/github/last-commit/yhyatt/DMAF?style=for-the-badge&logo=git&logoColor=white" alt="Last Commit"/>
-  </a>
-</p>
+[![CI](https://github.com/yhyatt/DMAF/actions/workflows/ci.yml/badge.svg)](https://github.com/yhyatt/DMAF/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/yhyatt/DMAF/blob/main/LICENSE)
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://github.com/yhyatt/DMAF)
+[![OpenClaw Skill](https://img.shields.io/badge/OpenClaw-Skill-blue)](https://clawhub.ai/skills/dmaf)
+[![Contributing](https://img.shields.io/badge/contributions-welcome-brightgreen)](https://github.com/yhyatt/DMAF/blob/main/CONTRIBUTING.md)
 
 <p align="center">
   <a href="#-openclaw-friendly">OpenClaw 🦞</a> •
